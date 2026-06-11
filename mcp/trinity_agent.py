@@ -93,8 +93,36 @@ def get_tasks():
     """FILA DE EXECUÇÃO do agente: tarefas atribuídas a ele que estão pendentes (todo/doing).
     O agente DEVE executar cada uma e reportar com report_progress. Não pode fugir da fila."""
     rows = _req("GET", "cockpit_tasks",
-                params=f"?agent_id=eq.{AID}&status=in.(todo,doing)&order=id&select=id,title,status,progress,offer_id,assignee")
+                params=f"?agent_id=eq.{AID}&status=in.(todo,doing)&order=id&select=id,title,status,progress,offer_id,assignee,stage")
     return {"pending": len(rows or []), "tasks": rows or []}
+
+def save_creative(offer_id, url, kind="image", headline=None, angle=None, source=None, variant_key=None):
+    """GOGGINS: guarda um criativo gerado pra uma oferta (Rico pega depois). Cada criativo é ÚNICO."""
+    _req("POST", "cockpit_creatives",
+         {"offer_id": int(offer_id), "url": url, "kind": kind, "headline": headline,
+          "angle": angle, "source": source, "variant_key": variant_key, "created_by": AID})
+    return {"ok": True}
+
+def get_creatives(offer_id, status="approved"):
+    """RICO: pega os criativos (aprovados) de uma oferta pra publicar."""
+    rows = _req("GET", "cockpit_creatives",
+                params=f"?offer_id=eq.{int(offer_id)}&status=eq.{status}&select=id,url,kind,headline,angle")
+    return {"count": len(rows or []), "creatives": rows or []}
+
+def attach_offer(offer_id, checkout_url=None, landing_url=None):
+    """STEVE: anexa o checkout (Hotmart) e a landing na oferta — pronto pro Rico distribuir."""
+    body = {}
+    if checkout_url: body["checkout_url"] = checkout_url
+    if landing_url: body["landing_url"] = landing_url
+    _req("PATCH", "cockpit_offers", body, params=f"?id=eq.{int(offer_id)}")
+    return {"ok": True}
+
+def publish_creative(creative_id, platform, post_url=None):
+    """RICO: marca um criativo como publicado e registra onde (tiktok/ig/yt/kwai)."""
+    _req("PATCH", "cockpit_creatives",
+         {"status": "published", "platform": platform, "post_url": post_url},
+         params=f"?id=eq.{int(creative_id)}")
+    return {"ok": True}
 
 # ── MCP server (stdio, JSON-RPC) ──
 TOOLS = [
@@ -106,8 +134,17 @@ TOOLS = [
      "inputSchema": {"type": "object", "properties": {"conversation_id": {"type": "integer"}, "body": {"type": "string"}}, "required": ["conversation_id", "body"]}},
     {"name": "get_tasks", "description": "Puxa a FILA de tarefas atribuídas a este agente (pendentes). Chame no início do trabalho: o agente deve executar cada tarefa e reportar com report_progress.",
      "inputSchema": {"type": "object", "properties": {}}},
+    {"name": "save_creative", "description": "GOGGINS: salva um criativo gerado (único) pra uma oferta.",
+     "inputSchema": {"type": "object", "properties": {"offer_id": {"type": "integer"}, "url": {"type": "string"}, "kind": {"type": "string"}, "headline": {"type": "string"}, "angle": {"type": "string"}, "source": {"type": "string"}, "variant_key": {"type": "string"}}, "required": ["offer_id", "url"]}},
+    {"name": "get_creatives", "description": "RICO: pega os criativos aprovados de uma oferta pra publicar.",
+     "inputSchema": {"type": "object", "properties": {"offer_id": {"type": "integer"}, "status": {"type": "string"}}, "required": ["offer_id"]}},
+    {"name": "attach_offer", "description": "STEVE: anexa checkout (Hotmart) + landing na oferta.",
+     "inputSchema": {"type": "object", "properties": {"offer_id": {"type": "integer"}, "checkout_url": {"type": "string"}, "landing_url": {"type": "string"}}, "required": ["offer_id"]}},
+    {"name": "publish_creative", "description": "RICO: marca criativo como publicado e registra a plataforma.",
+     "inputSchema": {"type": "object", "properties": {"creative_id": {"type": "integer"}, "platform": {"type": "string"}, "post_url": {"type": "string"}}, "required": ["creative_id", "platform"]}},
 ]
-DISPATCH = {"report_progress": report_progress, "log_activity": log_activity, "chat_reply": chat_reply, "get_tasks": get_tasks}
+DISPATCH = {"report_progress": report_progress, "log_activity": log_activity, "chat_reply": chat_reply, "get_tasks": get_tasks,
+            "save_creative": save_creative, "get_creatives": get_creatives, "attach_offer": attach_offer, "publish_creative": publish_creative}
 
 def mcp_serve():
     def send(obj): sys.stdout.write(json.dumps(obj) + "\n"); sys.stdout.flush()
