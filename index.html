@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root{
   --paper:#F4F3EF; --paper2:#FAF9F6; --card:#FFFFFF;
@@ -203,6 +204,48 @@ body.authed .gate{display:none}
 .fld input:disabled{color:var(--faint);background:var(--paper)}
 .ceobox{background:linear-gradient(135deg,var(--tint),transparent);border:1px solid var(--tint2);border-radius:14px;padding:13px 16px;margin-bottom:22px;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;color:var(--orange6)}
 .savep{height:44px;padding:0 22px;border:0;border-radius:11px;color:#fff;background:linear-gradient(150deg,var(--orange),var(--orange6));font-family:'Space Grotesk';font-weight:600;font-size:14px;cursor:pointer;box-shadow:0 10px 24px -8px rgba(249,115,22,.5)}
+/* AGENTES / TAREFAS */
+.agdgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.agcount{font-size:11px;font-weight:600;color:var(--orange6);background:var(--tint);padding:3px 9px;border-radius:99px}
+.agitem{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.agitem:last-child{border-bottom:0}
+.agname{font-size:13px;font-weight:600;color:var(--ink2)}.agname2{font-size:13px;font-weight:500;color:var(--ink2)}
+.agname2.done{text-decoration:line-through;color:var(--faint)}
+.agrole{font-size:11px;color:var(--faint)}
+.ondot{width:9px;height:9px;border-radius:50%;flex:none}
+.ondot.on{background:var(--green);box-shadow:0 0 0 3px var(--green-t)}
+.ondot.off{background:var(--faint)}
+.tkbar{height:6px;border-radius:99px;background:var(--paper);overflow:hidden;margin-bottom:12px}
+.tkbar i{display:block;height:100%;border-radius:99px;transition:width .8s var(--ease)}
+.ph2{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:8px}
+/* OFERTAS */
+.ofhead{margin-bottom:18px}
+.oftot{font-family:'Space Grotesk';font-weight:700;font-size:34px;color:var(--orange6);letter-spacing:-.03em}
+.oflab{font-size:12px;color:var(--muted)}
+.ofgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.ofcard{background:var(--paper2);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.ofttl{font-size:13px;font-weight:600;color:var(--ink2);line-height:1.35;margin-bottom:8px}
+.ofmeta{display:flex;align-items:center;justify-content:space-between}
+.ofr{font-family:'JetBrains Mono';font-size:12.5px;font-weight:600;color:var(--green)}
+/* CHAT */
+.chatwrap{display:grid;grid-template-columns:286px 1fr;gap:16px;height:564px}
+.chatlist{background:var(--card);border:1px solid var(--line);border-radius:var(--r-xl);padding:14px;overflow:auto;box-shadow:0 1px 2px rgba(23,20,16,.04),0 14px 40px -26px rgba(23,20,16,.3)}
+.convitem{display:flex;align-items:center;gap:10px;padding:9px;border-radius:11px;cursor:pointer;transition:background .15s}
+.convitem:hover{background:var(--paper)}.convitem.active{background:var(--tint)}
+.convav{width:32px;height:32px;border-radius:9px;background:var(--orange6);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;font-family:'Space Grotesk';flex:none}
+.convttl{font-size:13px;font-weight:600;color:var(--ink2)}
+.chatthread{background:var(--card);border:1px solid var(--line);border-radius:var(--r-xl);display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(23,20,16,.04),0 14px 40px -26px rgba(23,20,16,.3);overflow:hidden}
+.chatthread.empty{align-items:center;justify-content:center;text-align:center;color:var(--muted);font-weight:500;line-height:1.6}
+.msgs{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:72%;align-self:flex-start}
+.msg.mine{align-self:flex-end;text-align:right}
+.msg .mb{background:var(--paper2);border:1px solid var(--line);border-radius:14px;padding:9px 13px;font-size:13.5px;color:var(--ink2);display:inline-block;text-align:left}
+.msg.mine .mb{background:linear-gradient(150deg,var(--orange),var(--orange6));color:#fff;border:0}
+.msg .mt{font-size:10.5px;color:var(--faint);margin-top:3px}
+.chatinput{display:flex;gap:10px;padding:12px;border-top:1px solid var(--line)}
+.chatinput input{flex:1;border:1px solid var(--line2);border-radius:99px;height:40px;padding:0 16px;font-size:13px;background:var(--paper2);outline:none;font-family:Inter}
+.chatinput input:focus{border-color:var(--orange)}
+@media(max-width:1000px){.agdgrid,.ofgrid{grid-template-columns:1fr}.chatwrap{grid-template-columns:1fr;height:auto}}
 </style>
 </head>
 <body>
@@ -261,6 +304,11 @@ body.authed .gate{display:none}
 
   </div>
   <div id="view-feed" class="view" hidden></div>
+  <div id="view-agentes" class="view" hidden></div>
+  <div id="view-chat" class="view" hidden></div>
+  <div id="view-vendas" class="view" hidden></div>
+  <div id="view-tarefas" class="view" hidden></div>
+  <div id="view-ofertas" class="view" hidden></div>
   <div id="view-perfil" class="view" hidden></div>
   <div class="foot">Cockpit Trinity · conectado ao Supabase em tempo real · <b id="conn">conectando…</b></div>
 </div>
@@ -355,17 +403,112 @@ function subscribe(){
 setInterval(()=>{$('#clock').textContent=new Date().toLocaleTimeString('pt-BR');
   document.querySelectorAll('.ev .et').forEach((e,i)=>{const ev=state.events[i];if(ev)e.textContent=rel(ev.created_at);});},1000);
 
+// ── DADOS EXTRA (agentes, ofertas, chat, vendas) ──
+let CONV=null;
+async function loadExtra(){
+  const[su,of,co,sa,pf]=await Promise.all([
+    sb.from('cockpit_subagents').select('*').order('owner'),
+    sb.from('cockpit_offers').select('*').order('score',{ascending:false}),
+    sb.from('cockpit_conversations').select('*').order('created_at',{ascending:false}),
+    sb.from('commerce_sales').select('platform,gross_brl,net_brl,fee_brl,status,ordered_at').order('ordered_at',{ascending:false}).limit(500),
+    sb.from('profiles').select('id,nickname,email,online,last_seen')]);
+  state.subagents=su.data||[];state.offers=of.data||[];state.convs=co.data||[];state.sales=sa.data||[];state.profilesAll=pf.data||[];}
+function subscribeExtra(){sb.channel('extra-rt')
+  .on('postgres_changes',{event:'*',schema:'public',table:'cockpit_subagents'},async()=>{const{data}=await sb.from('cockpit_subagents').select('*').order('owner');state.subagents=data||[];if(VIEW==='agentes')renderAgentes();})
+  .on('postgres_changes',{event:'*',schema:'public',table:'cockpit_offers'},async()=>{const{data}=await sb.from('cockpit_offers').select('*').order('score',{ascending:false});state.offers=data||[];if(VIEW==='ofertas')renderOfertas();})
+  .on('postgres_changes',{event:'*',schema:'public',table:'cockpit_messages'},(p)=>{if(p.new){if(CONV&&p.new.conversation_id===CONV)loadMessages(CONV);else if(p.new.sender!==window.ME?.id){chatUnread++;renderTabs();}}})
+  .on('postgres_changes',{event:'*',schema:'public',table:'profiles'},async()=>{const{data}=await sb.from('profiles').select('id,nickname,email,online,last_seen');state.profilesAll=data||[];})
+  .subscribe();}
+
+// ── PRESENÇA (heartbeat) ──
+function isOnline(ts){return ts&&(Date.now()-new Date(ts).getTime())<90000;}
+async function startPresence(){const me=window.ME;if(!me)return;
+  const beat=()=>{sb.from('profiles').update({online:true,last_seen:new Date().toISOString()}).eq('id',me.id).then(()=>{});};
+  beat();setInterval(beat,30000);
+  window.addEventListener('beforeunload',()=>{try{sb.from('profiles').update({online:false}).eq('id',me.id);}catch(e){}});}
+
+// ── AGENTES (quem cada um executa + online) ──
+function renderAgentes(){const byO={};(state.subagents||[]).forEach(s=>{(byO[s.owner]=byO[s.owner]||[]).push(s);});
+  const ceos=[['steve','Steve · Pyerri'],['goggins','Goggins · Murilo'],['rico','Rico · Davi']];
+  $('#view-agentes').innerHTML=`<div class="agdgrid">${ceos.map(([o,t])=>{const list=byO[o]||[];const on=list.filter(s=>s.online).length;
+    return `<div class="panel"><div class="ph"><h3>${t}</h3><span class="agcount">${on}/${list.length} online</span></div>
+      ${list.map(s=>`<div class="agitem"><span class="ondot ${s.online?'on':'off'}"></span><div style="flex:1"><div class="agname">${esc(s.name)}</div><div class="agrole">${esc(s.role||'')}</div></div><span class="st ${s.status==='working'?'doing':'todo'}">${s.status==='working'?'rodando':esc(s.status||'')}</span></div>`).join('')||'<div class="agrole">sem agentes</div>'}</div>`;}).join('')}</div>`;}
+
+// ── TAREFAS (de cada um x concluídas) ──
+function renderTarefas(){const byA={};(state.tasks||[]).forEach(t=>{(byA[t.agent_id]=byA[t.agent_id]||[]).push(t);});
+  $('#view-tarefas').innerHTML=`<div class="agdgrid">${(state.agents||[]).map(a=>{const ts=byA[a.id]||[];const done=ts.filter(t=>t.status==='done').length;
+    return `<div class="panel"><div class="ph"><h3>${esc(a.name)}</h3><span class="agcount">${done}/${ts.length} feitas</span></div>
+      <div class="tkbar"><i style="width:${ts.length?Math.round(done/ts.length*100):0}%;background:${a.accent}"></i></div>
+      ${ts.map(t=>`<div class="agitem"><span class="st ${t.status}">${({doing:'fazendo',done:'feito',todo:'a fazer',blocked:'travado',review:'revisão'})[t.status]||t.status}</span><div style="flex:1" class="agname2 ${t.status==='done'?'done':''}">${esc(t.title)}</div></div>`).join('')||'<div class="agrole">sem tarefas</div>'}</div>`;}).join('')}</div>`;}
+
+// ── OFERTAS (esteira x produção x feita x R$) ──
+function renderOfertas(){const cols=[['esteira','🟡 Na esteira'],['producao','🟠 Em produção'],['feita','🟢 Feitas']];
+  const tot=(state.offers||[]).reduce((s,o)=>s+Number(o.result_brl||0),0);
+  $('#view-ofertas').innerHTML=`<div class="ofhead"><div class="oftot">R$ ${tot.toLocaleString('pt-BR')}</div><div class="oflab">resultado total das ofertas (atualiza quando os agentes fecham venda)</div></div>
+    <div class="ofgrid">${cols.map(([st,lab])=>{const list=(state.offers||[]).filter(o=>o.status===st);
+    return `<div class="panel"><div class="ph"><h3>${lab}</h3><span class="agcount">${list.length}</span></div>
+      ${list.map(o=>`<div class="ofcard"><div class="ofttl">${esc(o.title)}</div><div class="ofmeta"><span class="st doing">${esc(o.tier||'')} · ${o.score||''}</span><span class="ofr">R$ ${Number(o.result_brl||0).toLocaleString('pt-BR')}</span></div></div>`).join('')||'<div class="agrole">vazio</div>'}</div>`;}).join('')}</div>`;}
+
+// ── VENDAS (gráficos, dados REAIS de commerce_sales) ──
+let chRev=null,chPlat=null;
+function renderVendas(){const sales=state.sales||[];
+  const bruto=sales.reduce((s,x)=>s+Number(x.gross_brl||0),0),liq=sales.reduce((s,x)=>s+Number(x.net_brl||0),0),tax=sales.reduce((s,x)=>s+Number(x.fee_brl||0),0);
+  const byDay={};sales.forEach(x=>{const d=(x.ordered_at||'').slice(0,10);if(d)byDay[d]=(byDay[d]||0)+Number(x.gross_brl||0);});
+  const days=Object.keys(byDay).sort().slice(-30);
+  const byP={};sales.forEach(x=>{const p=x.platform||'?';byP[p]=(byP[p]||0)+Number(x.gross_brl||0);});const pk=Object.keys(byP);
+  const brl=n=>Math.round(n).toLocaleString('pt-BR');
+  $('#view-vendas').innerHTML=`<div class="kpis">
+    <div class="kpi"><div class="lbl">Faturamento bruto</div><div class="val"><small>R$</small> ${brl(bruto)}</div></div>
+    <div class="kpi"><div class="lbl">Líquido</div><div class="val"><small>R$</small> ${brl(liq)}</div></div>
+    <div class="kpi"><div class="lbl">Taxas</div><div class="val"><small>R$</small> ${brl(tax)}</div></div>
+    <div class="kpi"><div class="lbl">Nº de vendas</div><div class="val">${sales.length}</div></div></div>
+    <div class="lower"><div class="panel"><div class="ph"><h3>Faturamento por dia</h3></div><canvas id="cRev" height="118"></canvas></div>
+      <div class="panel"><div class="ph"><h3>Por plataforma</h3></div><canvas id="cPlat" height="118"></canvas></div></div>`;
+  if(window.Chart){chRev&&chRev.destroy();chPlat&&chPlat.destroy();
+    chRev=new Chart($('#cRev'),{type:'line',data:{labels:days.map(d=>d.slice(5)),datasets:[{data:days.map(d=>Math.round(byDay[d])),borderColor:'#EA580C',backgroundColor:'rgba(249,115,22,.13)',fill:true,tension:.35,pointRadius:0,borderWidth:2}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8}},y:{grid:{color:'rgba(0,0,0,.05)'}}}}});
+    chPlat=new Chart($('#cPlat'),{type:'doughnut',data:{labels:pk,datasets:[{data:pk.map(p=>Math.round(byP[p])),backgroundColor:['#F97316','#EA580C','#FB923C','#FDBA74','#FED7AA','#C2410C']}]},options:{plugins:{legend:{position:'right'}},cutout:'62%'}});}}
+
+// ── CHAT (Direct: sócios + agentes + Steve) ──
+function chatPeers(){const me=window.ME||{};
+  const ppl=(state.profilesAll||[]).filter(p=>p.id!==me.id).map(p=>({id:p.id,name:p.nickname||p.email,kind:'sócio'}));
+  const ags=[{id:'steve',name:'Steve',kind:'CEO'}].concat((state.subagents||[]).map(s=>({id:s.id,name:s.name,kind:'agente'})));
+  return ppl.concat(ags);}
+async function loadMessages(cid){const{data}=await sb.from('cockpit_messages').select('*').eq('conversation_id',cid).order('created_at');state.msgs=data||[];if(VIEW==='chat')renderChat();}
+async function openConv(cid){CONV=cid;chatUnread=0;await loadMessages(cid);}
+async function startConvWith(peer){const me=window.ME;
+  const{data:c,error}=await sb.from('cockpit_conversations').insert({title:peer.name,is_group:false,created_by:me.id}).select().single();
+  if(error){alert(error.message);return;}
+  await sb.from('cockpit_conv_members').insert([{conversation_id:c.id,member:me.id,member_name:me.nickname},{conversation_id:c.id,member:peer.id,member_name:peer.name}]);
+  state.convs.unshift(c);CONV=c.id;state.msgs=[];renderChat();}
+async function sendMsg(){const me=window.ME;const inp=$('#chatin');if(!inp)return;const body=inp.value.trim();if(!body||!CONV)return;inp.value='';
+  await sb.from('cockpit_messages').insert({conversation_id:CONV,sender:me.id,sender_name:me.nickname,body});}
+function renderChat(){const me=window.ME||{};window._peers=chatPeers();
+  const list=`<div class="chatlist"><div class="ph2">Conversas</div>
+    ${(state.convs||[]).map(c=>`<div class="convitem${c.id===CONV?' active':''}" data-cid="${c.id}"><div class="convav">${((c.title||'?')[0]||'?').toUpperCase()}</div><div class="convttl">${esc(c.title||'Conversa')}</div></div>`).join('')||'<div class="agrole" style="padding:8px 4px">nenhuma ainda</div>'}
+    <div class="ph2" style="margin-top:16px">Começar conversa</div>
+    ${window._peers.map((p,i)=>`<div class="convitem peer" data-pi="${i}"><div class="convav" style="background:var(--paper);color:var(--ink2);border:1px solid var(--line)">${(p.name[0]||'?').toUpperCase()}</div><div><div class="convttl">${esc(p.name)}</div><div class="agrole">${p.kind}</div></div></div>`).join('')}</div>`;
+  const thread=CONV?`<div class="chatthread"><div class="msgs" id="msgs">${(state.msgs||[]).map(m=>`<div class="msg ${m.sender===me.id?'mine':''}"><div class="mb">${esc(m.body)}</div><div class="mt">${esc(m.sender_name||'')} · ${rel(m.created_at)}</div></div>`).join('')||'<div class="agrole" style="margin:auto">sem mensagens — manda a primeira</div>'}</div>
+      <div class="chatinput"><input id="chatin" placeholder="mensagem…"><button class="gbtn" style="width:auto;padding:0 18px;height:40px;margin:0" id="chatsend">Enviar</button></div></div>`
+    :`<div class="chatthread empty"><div>Escolha uma conversa ou comece uma nova 👈<br><span style="font-size:12.5px;color:var(--faint)">dá pra falar com os sócios E com os agentes (até com o Steve)</span></div></div>`;
+  $('#view-chat').innerHTML=`<div class="chatwrap">${list}${thread}</div>`;
+  document.querySelectorAll('#view-chat .convitem:not(.peer)').forEach(b=>b.onclick=()=>openConv(+b.dataset.cid));
+  document.querySelectorAll('#view-chat .convitem.peer').forEach(b=>b.onclick=()=>startConvWith(window._peers[+b.dataset.pi]));
+  if(CONV){const s=$('#chatsend');if(s)s.onclick=sendMsg;const ci=$('#chatin');if(ci)ci.addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});const mm=$('#msgs');if(mm)mm.scrollTop=mm.scrollHeight;}}
+
 // ── AUTH (login real + verificação Supabase) ──
 let booted=false;
 function gmsg(t,c){const m=$('#gmsg');m.textContent=t;m.className='gmsg '+(c||'');}
-async function boot(){if(booted)return;booted=true;await loadProfile();await loadAll();await loadFeed();subscribe();subscribeFeed();renderTabs();setView('cockpit');}
+async function boot(){if(booted)return;booted=true;await loadProfile();await loadAll();await loadFeed();await loadExtra();startPresence();subscribe();subscribeFeed();subscribeExtra();renderTabs();setView('cockpit');}
 
 // ── NAV / VIEWS ──
-let VIEW='cockpit';
-const VIEWS=[{k:'cockpit',label:'Cockpit'},{k:'feed',label:'Feed'},{k:'perfil',label:'Perfil'}];
-function renderTabs(){$('#tabs').innerHTML=VIEWS.map(v=>`<button class="tab${v.k===VIEW?' active':''}" data-v="${v.k}">${v.label}${v.k==='feed'&&state.posts&&state.posts.length?`<span class="tn">${state.posts.length}</span>`:''}</button>`).join('');
+let VIEW='cockpit';let chatUnread=0;
+const VIEWS=[{k:'cockpit',label:'Cockpit'},{k:'feed',label:'Feed'},{k:'agentes',label:'Agentes'},{k:'chat',label:'Chat'},{k:'vendas',label:'Vendas'},{k:'tarefas',label:'Tarefas'},{k:'ofertas',label:'Ofertas'},{k:'perfil',label:'Perfil'}];
+const ALLVIEWS=VIEWS.map(v=>v.k);
+function renderTabs(){$('#tabs').innerHTML=VIEWS.map(v=>{let n='';if(v.k==='feed'&&state.posts&&state.posts.length)n=`<span class="tn">${state.posts.length}</span>`;if(v.k==='chat'&&chatUnread)n=`<span class="tn">${chatUnread}</span>`;
+    return `<button class="tab${v.k===VIEW?' active':''}" data-v="${v.k}">${v.label}${n}</button>`;}).join('');
   document.querySelectorAll('#tabs .tab').forEach(b=>b.onclick=()=>setView(b.dataset.v));}
-function setView(k){VIEW=k;['cockpit','feed','perfil'].forEach(v=>{const el=$('#view-'+v);if(el)el.hidden=(v!==k);});renderTabs();if(k==='feed')renderFeedView();if(k==='perfil')renderPerfil();}
+function setView(k){VIEW=k;ALLVIEWS.forEach(v=>{const el=$('#view-'+v);if(el)el.hidden=(v!==k);});renderTabs();
+  ({feed:renderFeedView,agentes:renderAgentes,chat:renderChat,vendas:renderVendas,tarefas:renderTarefas,ofertas:renderOfertas,perfil:renderPerfil}[k]||(()=>{}))();}
 
 // ── FEED ──
 function avatarHTML(name,photo){const L=((name||'?')[0]||'?').toUpperCase();
