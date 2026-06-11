@@ -71,7 +71,8 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .ahead::before{content:"";position:absolute;left:0;top:0;height:3px;width:100%;background:var(--ac,#F97316);opacity:.9}
 .arow{display:flex;align-items:center;gap:12px}
 .badge{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:#fff;font-family:'Space Grotesk';font-weight:700;font-size:18px;
-  background:var(--ac);box-shadow:0 6px 16px -4px var(--ac)}
+  background:var(--ac);box-shadow:0 6px 16px -4px var(--ac);overflow:hidden}
+.badge img{width:100%;height:100%;object-fit:cover}
 .aname{font-family:'Space Grotesk';font-weight:700;font-size:17px;letter-spacing:-.02em}
 .arole{font-size:11.5px;color:var(--muted);margin-top:2px;font-weight:500}
 .chips{display:flex;gap:6px;margin-top:11px;flex-wrap:wrap}
@@ -187,7 +188,8 @@ body.authed .gate{display:none}
 .pact.on{color:var(--orange6);background:var(--tint)}
 .comments{margin-top:12px;display:flex;flex-direction:column;gap:9px}
 .cmt{display:flex;gap:9px}
-.cmt .cav{width:28px;height:28px;border-radius:8px;background:var(--paper);border:1px solid var(--line);display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--ink2);flex:none}
+.cmt .cav{width:28px;height:28px;border-radius:8px;background:var(--paper);border:1px solid var(--line);display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--ink2);flex:none;overflow:hidden}
+.cmt .cav img{width:100%;height:100%;object-fit:cover}
 .cmt .cb{background:var(--paper2);border-radius:11px;padding:8px 12px;flex:1}
 .cmt .cn{font-size:12px;font-weight:600}.cmt .ct{font-size:12.5px;color:var(--ink2);line-height:1.4}
 .addc{display:flex;gap:9px;margin-top:11px;align-items:center}
@@ -397,12 +399,17 @@ function renderAgents(){
   $('#cols').innerHTML=state.agents.map(a=>{
     const tasks=state.tasks.filter(t=>t.agent_id===a.id);
     const res=state.results.filter(r=>r.agent_id===a.id);
+    // Status REAL por heartbeat (cockpit_subagents.last_heartbeat via MCP) —
+    // a.status era seed estático e mentia "offline" com o agente batendo agora.
+    const beats=(state.subagents||[]).filter(s=>s.owner===a.id&&isOnline(s.last_heartbeat));
+    const on=beats.length>0;
+    const photo=a.photo_url||actorPhoto(a.id);
     return `<div class="agent" style="--ac:${a.accent}">
       <div class="ahead">
-        <div class="arow"><div class="badge">${a.name[0]}</div>
+        <div class="arow"><div class="badge">${photo?`<img src="${photo}" alt="" onerror="this.parentElement.textContent='${a.name[0]}'">`:a.name[0]}</div>
           <div><div class="aname">${a.name}</div><div class="arole">${a.role}</div></div></div>
         <div class="chips"><span class="chip">@${a.partner}</span><span class="chip">${a.machine}</span>
-          <span class="chip live-c"><span class="d"></span>${a.status==='working'?'trabalhando':a.status}</span></div>
+          <span class="chip live-c" style="${on?'':'opacity:.55'}"><span class="d" style="${on?'':'background:var(--muted);animation:none'}"></span>${on?`online · ${beats.length} rodando`:'offline'}</span></div>
       </div>
       <div class="sect"><h4>Tarefas</h4>${tasks.length?tasks.map(t=>`
         <div class="task"><div class="t"><div><div class="tt">${t.title}</div><div class="pj">${t.project||''}</div></div>
@@ -464,14 +471,23 @@ async function loadExtra(){
   state.subagents=su.data||[];state.offers=of.data||[];state.convs=co.data||[];state.sales=sa.data||[];state.profilesAll=pf.data||[];
   const an=await sb.from('cockpit_analysis').select('*').order('created_at',{ascending:false}).limit(1);state.analysis=an.data&&an.data[0];}
 function subscribeExtra(){sb.channel('extra-rt')
-  .on('postgres_changes',{event:'*',schema:'public',table:'cockpit_subagents'},async()=>{const{data}=await sb.from('cockpit_subagents').select('*').order('owner');state.subagents=data||[];if(VIEW==='agentes')renderAgentes();})
+  .on('postgres_changes',{event:'*',schema:'public',table:'cockpit_subagents'},async()=>{const{data}=await sb.from('cockpit_subagents').select('*').order('owner');state.subagents=data||[];if(VIEW==='agentes')renderAgentes();if(VIEW==='cockpit')renderAgents();})
   .on('postgres_changes',{event:'*',schema:'public',table:'cockpit_offers'},async()=>{const{data}=await sb.from('cockpit_offers').select('*').order('score',{ascending:false});state.offers=data||[];if(VIEW==='ofertas')renderOfertas();})
   .on('postgres_changes',{event:'*',schema:'public',table:'cockpit_messages'},(p)=>{if(p.new){if(CONV&&p.new.conversation_id===CONV)loadMessages(CONV);else if(p.new.sender!==window.ME?.id){chatUnread++;renderTabs();}}})
-  .on('postgres_changes',{event:'*',schema:'public',table:'profiles'},async()=>{const{data}=await sb.from('profiles').select('id,nickname,email,online,last_seen');state.profilesAll=data||[];})
+  .on('postgres_changes',{event:'*',schema:'public',table:'profiles'},async()=>{
+    // BUG fix: o re-select esquecia photo_url → qualquer evento de profile
+    // apagava as fotos do estado e o feed caía pra letra. Agora mantém a foto
+    // E re-renderiza o feed na hora (sócio troca a foto → posts atualizam ao vivo).
+    const{data}=await sb.from('profiles').select('id,nickname,email,online,last_seen,photo_url');
+    state.profilesAll=data||[];
+    if(VIEW==='feed')renderFeedView();})
   .subscribe();}
 
 // ── PRESENÇA (heartbeat) ──
 function isOnline(ts){return ts&&(Date.now()-new Date(ts).getTime())<90000;}
+// Re-checa a cada 45s: quando um beat PARA não chega evento nenhum — sem isso
+// o card ficaria "online" pra sempre depois do agente morrer.
+setInterval(()=>{if(VIEW==='cockpit')renderAgents();if(VIEW==='agentes')renderAgentes();},45000);
 async function startPresence(){const me=window.ME;if(!me)return;
   const beat=()=>{sb.from('profiles').update({online:true,last_seen:new Date().toISOString()}).eq('id',me.id).then(()=>{});};
   beat();setInterval(beat,30000);
@@ -671,15 +687,18 @@ function renderTabs(){$('#tabs').innerHTML=VIEWS.map(v=>{let n='';if(v.k==='feed
     return `<button class="tab${v.k===VIEW?' active':''}" data-v="${v.k}">${v.label}${n}</button>`;}).join('');
   document.querySelectorAll('#tabs .tab').forEach(b=>b.onclick=()=>setView(b.dataset.v));}
 function setView(k){VIEW=k;ALLVIEWS.forEach(v=>{const el=$('#view-'+v);if(el)el.hidden=(v!==k);});renderTabs();
-  ({feed:renderFeedView,agentes:renderAgentes,chat:renderChat,vendas:renderVendas,tarefas:renderTarefas,ofertas:renderOfertas,mcp:renderMcp,perfil:renderPerfil}[k]||(()=>{}))();}
+  ({cockpit:renderAgents,feed:renderFeedView,agentes:renderAgentes,chat:renderChat,vendas:renderVendas,tarefas:renderTarefas,ofertas:renderOfertas,mcp:renderMcp,perfil:renderPerfil}[k]||(()=>{}))();}
 
 // ── FEED ──
 function avatarHTML(name,photo){const L=((name||'?')[0]||'?').toUpperCase();
   return photo?`<img src="${photo}" alt="" onerror="this.parentElement.textContent='${L}'">`:L;}
 function av0(name,photo){return avatarHTML(name,photo);}
-function authorPhoto(p){if(!p)return null;if(p.author_photo)return p.author_photo;
-  const pr=(state.profilesAll||[]).find(x=>x.id===p.author);if(pr&&pr.photo_url)return pr.photo_url;
-  const sa=(state.subagents||[]).find(x=>x.id===p.author);return sa&&sa.photo_url;}
+// Foto SEMPRE do perfil vivo primeiro (se o sócio troca a foto, todos os posts
+// dele atualizam na hora) — snapshot/subagent são só fallback.
+function actorPhoto(actorId){if(!actorId)return null;
+  const pr=(state.profilesAll||[]).find(x=>x.id===actorId);if(pr&&pr.photo_url)return pr.photo_url;
+  const sa=(state.subagents||[]).find(x=>x.id===actorId);return sa&&sa.photo_url||null;}
+function authorPhoto(p){if(!p)return null;return actorPhoto(p.author)||p.author_photo||null;}
 function esc(s){return (s||'').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));}
 async function loadFeed(){const[a,b,c,d]=await Promise.all([
   sb.from('cockpit_posts').select('*').order('created_at',{ascending:false}).limit(50),
@@ -699,7 +718,7 @@ function renderFeedView(){const me=window.ME||{};
       <div class="pactions"><button class="pact react${iR?' on':''}" data-pid="${p.id}">🔥 ${rx.length||''}</button>
         <button class="pact" style="cursor:default">💬 ${cs.length||''}</button>
         <button class="pact save${iS?' on':''}" data-pid="${p.id}">🔖 ${iS?'salvo':'salvar'}</button></div>
-      ${cs.length?`<div class="comments">${cs.map(c=>`<div class="cmt"><div class="cav">${((c.actor_name||'?')[0]||'?').toUpperCase()}</div><div class="cb"><div class="cn">${esc(c.actor_name||c.actor)}</div><div class="ct">${esc(c.body)}</div></div></div>`).join('')}</div>`:''}
+      ${cs.length?`<div class="comments">${cs.map(c=>`<div class="cmt"><div class="cav">${av0(c.actor_name,actorPhoto(c.actor))}</div><div class="cb"><div class="cn">${esc(c.actor_name||c.actor)}</div><div class="ct">${esc(c.body)}</div></div></div>`).join('')}</div>`:''}
       <div class="addc"><input placeholder="comenta…" data-pid="${p.id}" class="cinput"><button class="pact send" data-pid="${p.id}">enviar</button></div></div>`;}).join('');
   $('#view-feed').innerHTML=composer+(posts||'<div class="post">Ainda sem publicações. Solta a primeira aí 👆</div>');
   $('#ppost').onclick=addPost;
