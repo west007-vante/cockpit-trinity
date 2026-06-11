@@ -368,7 +368,9 @@ function renderTabs(){$('#tabs').innerHTML=VIEWS.map(v=>`<button class="tab${v.k
 function setView(k){VIEW=k;['cockpit','feed','perfil'].forEach(v=>{const el=$('#view-'+v);if(el)el.hidden=(v!==k);});renderTabs();if(k==='feed')renderFeedView();if(k==='perfil')renderPerfil();}
 
 // ── FEED ──
-function av0(name,photo){return photo?`<img src="${photo}">`:((name||'?')[0]||'?').toUpperCase();}
+function avatarHTML(name,photo){const L=((name||'?')[0]||'?').toUpperCase();
+  return photo?`<img src="${photo}" alt="" onerror="this.parentElement.textContent='${L}'">`:L;}
+function av0(name,photo){return avatarHTML(name,photo);}
 function esc(s){return (s||'').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));}
 async function loadFeed(){const[a,b,c,d]=await Promise.all([
   sb.from('cockpit_posts').select('*').order('created_at',{ascending:false}).limit(50),
@@ -413,14 +415,30 @@ function subscribeFeed(){sb.channel('feed-rt')
 // ── PERFIL ──
 function renderPerfil(){const me=window.ME||{};
   $('#view-perfil').innerHTML=`<div class="pcard"><div class="ceobox">⭐ TIME CEO · Pyerri + Steve</div>
-    <div class="big">${me.photo_url?`<img src="${me.photo_url}">`:((me.nickname||'?')[0]||'?').toUpperCase()}</div>
+    <div class="big">${avatarHTML(me.nickname,me.photo_url)}</div>
     <div class="fld"><label>Email (verificado)</label><input value="${esc(me.email||'')}" disabled></div>
     <div class="fld"><label>Apelido</label><input id="pf-nick" value="${esc(me.nickname||'')}"></div>
     <div class="fld"><label>Cargo</label><input id="pf-role" value="${esc(me.role||'')}"></div>
-    <div class="fld"><label>Foto (URL)</label><input id="pf-photo" value="${esc(me.photo_url||'')}" placeholder="https://..."></div>
+    <div class="fld"><label>Foto de perfil</label>
+      <input type="file" id="pf-file" accept="image/*" style="display:none">
+      <button type="button" class="ghost" id="pf-pick" style="height:44px;margin:0;width:auto;padding:0 18px">📷 Escolher foto do computador</button>
+      <span id="pf-up" style="margin-left:10px;font-size:12px;font-weight:600;color:var(--muted)"></span></div>
     <button class="savep" id="pf-save">Salvar perfil</button><span id="pf-msg" style="margin-left:12px;font-size:12.5px;font-weight:600"></span></div>`;
-  $('#pf-save').onclick=savePerfil;}
-async function savePerfil(){const me=window.ME;const upd={nickname:$('#pf-nick').value.trim(),role:$('#pf-role').value.trim(),photo_url:$('#pf-photo').value.trim()||null};
+  $('#pf-save').onclick=savePerfil;
+  $('#pf-pick').onclick=()=>$('#pf-file').click();
+  $('#pf-file').onchange=uploadAvatar;}
+async function uploadAvatar(e){const me=window.ME;const file=e.target.files[0];if(!file)return;
+  const up=$('#pf-up');up.textContent='enviando…';up.style.color='var(--muted)';
+  const ext=((file.name.split('.').pop()||'png').toLowerCase().replace(/[^a-z0-9]/g,''))||'png';
+  const path=me.id+'/avatar_'+Date.now()+'.'+ext;
+  const{error}=await sb.storage.from('avatars').upload(path,file,{upsert:true,contentType:file.type||'image/png'});
+  if(error){up.textContent='erro: '+error.message;up.style.color='var(--red)';return;}
+  const url=sb.storage.from('avatars').getPublicUrl(path).data.publicUrl;
+  const{error:e2}=await sb.from('profiles').update({photo_url:url}).eq('id',me.id);
+  if(e2){up.textContent='erro ao salvar: '+e2.message;up.style.color='var(--red)';return;}
+  window.ME.photo_url=url;up.textContent='✓ foto no ar — todos te veem agora';up.style.color='var(--green)';
+  await loadProfile();renderPerfil();}
+async function savePerfil(){const me=window.ME;const upd={nickname:$('#pf-nick').value.trim(),role:$('#pf-role').value.trim(),photo_url:me.photo_url||null};
   const{error}=await sb.from('profiles').update(upd).eq('id',me.id);const m=$('#pf-msg');
   if(error){m.textContent=error.message;m.style.color='var(--red)';}
   else{m.textContent='✓ salvo';m.style.color='var(--green)';Object.assign(window.ME,upd);await loadProfile();renderPerfil();}}
@@ -428,8 +446,7 @@ async function loadProfile(){const{data:{user}}=await sb.auth.getUser();if(!user
   let{data:p}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
   if(!p)p={nickname:(user.email||'').split('@')[0],role:'Sócio'};
   window.ME={id:user.id,email:user.email,nickname:p.nickname,role:p.role,photo_url:p.photo_url,team:p.team};
-  const av=p.photo_url?`<img src="${p.photo_url}">`:((p.nickname||'?')[0]||'?').toUpperCase();
-  $('#userchip').innerHTML=`<div class="userav">${av}</div><div><div class="uname">${p.nickname||'Sócio'}</div><div class="urole">${p.role||''}</div></div>`;}
+  $('#userchip').innerHTML=`<div class="userav">${avatarHTML(p.nickname,p.photo_url)}</div><div><div class="uname">${p.nickname||'Sócio'}</div><div class="urole">${p.role||''}</div></div>`;}
 async function doLogin(){const email=$('#gmail').value.trim(),password=$('#gpass').value;
   if(!email||!password){gmsg('Preenche email e senha','err');return;}gmsg('entrando…');
   const{error}=await sb.auth.signInWithPassword({email,password});
