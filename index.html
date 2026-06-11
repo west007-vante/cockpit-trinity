@@ -460,7 +460,7 @@ async function loadExtra(){
     sb.from('cockpit_offers').select('*').order('score',{ascending:false}),
     sb.from('cockpit_conversations').select('*').order('created_at',{ascending:false}),
     sb.from('commerce_sales').select('platform,gross_brl,net_brl,fee_brl,status,ordered_at').order('ordered_at',{ascending:false}).limit(500),
-    sb.from('profiles').select('id,nickname,email,online,last_seen')]);
+    sb.from('profiles').select('id,nickname,email,online,last_seen,photo_url')]);
   state.subagents=su.data||[];state.offers=of.data||[];state.convs=co.data||[];state.sales=sa.data||[];state.profilesAll=pf.data||[];
   const an=await sb.from('cockpit_analysis').select('*').order('created_at',{ascending:false}).limit(1);state.analysis=an.data&&an.data[0];}
 function subscribeExtra(){sb.channel('extra-rt')
@@ -677,6 +677,9 @@ function setView(k){VIEW=k;ALLVIEWS.forEach(v=>{const el=$('#view-'+v);if(el)el.
 function avatarHTML(name,photo){const L=((name||'?')[0]||'?').toUpperCase();
   return photo?`<img src="${photo}" alt="" onerror="this.parentElement.textContent='${L}'">`:L;}
 function av0(name,photo){return avatarHTML(name,photo);}
+function authorPhoto(p){if(!p)return null;if(p.author_photo)return p.author_photo;
+  const pr=(state.profilesAll||[]).find(x=>x.id===p.author);if(pr&&pr.photo_url)return pr.photo_url;
+  const sa=(state.subagents||[]).find(x=>x.id===p.author);return sa&&sa.photo_url;}
 function esc(s){return (s||'').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));}
 async function loadFeed(){const[a,b,c,d]=await Promise.all([
   sb.from('cockpit_posts').select('*').order('created_at',{ascending:false}).limit(50),
@@ -690,7 +693,7 @@ function renderFeedView(){const me=window.ME||{};
       <button class="gbtn" style="width:auto;padding:0 22px;height:38px;margin:0" id="ppost">Publicar</button></div></div>`;
   const posts=state.posts.map(p=>{const cs=state.comments.filter(c=>c.post_id===p.id);const rx=state.reactions.filter(r=>r.post_id===p.id);
     const iR=rx.some(r=>r.actor===me.id);const iS=state.saves.some(s=>s.post_id===p.id&&s.actor===me.id);
-    return `<div class="post"><div class="phead"><div class="pav">${av0(p.author_name,p.author_photo)}</div>
+    return `<div class="post"><div class="phead"><div class="pav">${av0(p.author_name,authorPhoto(p))}</div>
       <div><div class="pauthor">${esc(p.author_name||p.author)}</div><div class="ptime">${rel(p.created_at)}</div></div></div>
       <div class="pbody">${esc(p.body)}</div>${renderAtt(p.attachments)}
       <div class="pactions"><button class="pact react${iR?' on':''}" data-pid="${p.id}">🔥 ${rx.length||''}</button>

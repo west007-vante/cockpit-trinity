@@ -89,6 +89,13 @@ def chat_reply(conversation_id, body):
          {"conversation_id": int(conversation_id), "sender": AID, "sender_name": NAME, "body": body})
     return {"ok": True}
 
+def get_tasks():
+    """FILA DE EXECUÇÃO do agente: tarefas atribuídas a ele que estão pendentes (todo/doing).
+    O agente DEVE executar cada uma e reportar com report_progress. Não pode fugir da fila."""
+    rows = _req("GET", "cockpit_tasks",
+                params=f"?agent_id=eq.{AID}&status=in.(todo,doing)&order=id&select=id,title,status,progress,offer_id,assignee")
+    return {"pending": len(rows or []), "tasks": rows or []}
+
 # ── MCP server (stdio, JSON-RPC) ──
 TOOLS = [
     {"name": "report_progress", "description": "Atualiza o progresso (0-100) e status de uma tarefa do Cockpit. Use quando avançar/concluir trabalho REAL.",
@@ -97,8 +104,10 @@ TOOLS = [
      "inputSchema": {"type": "object", "properties": {"kind": {"type": "string"}, "message": {"type": "string"}}, "required": ["message"]}},
     {"name": "chat_reply", "description": "Responde uma mensagem no chat do Cockpit.",
      "inputSchema": {"type": "object", "properties": {"conversation_id": {"type": "integer"}, "body": {"type": "string"}}, "required": ["conversation_id", "body"]}},
+    {"name": "get_tasks", "description": "Puxa a FILA de tarefas atribuídas a este agente (pendentes). Chame no início do trabalho: o agente deve executar cada tarefa e reportar com report_progress.",
+     "inputSchema": {"type": "object", "properties": {}}},
 ]
-DISPATCH = {"report_progress": report_progress, "log_activity": log_activity, "chat_reply": chat_reply}
+DISPATCH = {"report_progress": report_progress, "log_activity": log_activity, "chat_reply": chat_reply, "get_tasks": get_tasks}
 
 def mcp_serve():
     def send(obj): sys.stdout.write(json.dumps(obj) + "\n"); sys.stdout.flush()
