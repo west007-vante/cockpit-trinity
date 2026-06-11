@@ -637,14 +637,16 @@ function renderThemePanel(){const t=window.THEME||{mode:'light',accent:'#F97316'
 // ── MCP (doc + gerar config por sócio) ──
 const SUPA_PUB=SUPA_URL;
 function renderMcp(){const me=window.ME||{};
+  const ownerMap={pyerri:'steve',boss:'steve',murilo:'goggins',davi:'rico'};
+  const owner=ownerMap[(me.nickname||'').toLowerCase()]||(me.team==='CEO'?'steve':'goggins');const aid=owner;
   $('#view-mcp').innerHTML=`<div class="panel mcpdoc">
     <h2 class="disp" style="font-size:22px;margin-bottom:6px">🔌 Conectar seus agentes (MCP)</h2>
     <div class="agrole" style="font-size:13px;margin-bottom:20px;line-height:1.6">Cada sócio roda os agentes na PRÓPRIA máquina (M1) usando Claude Code CLI como cérebro. O conector abaixo faz o agente aparecer ONLINE aqui e reportar trabalho REAL (progresso de tarefa, atividade, chat). Zero mockup: sem rodar isso, o agente não aparece.</div>
     <div class="mcpstep"><span class="mcpn">1</span><div><b>Baixe o conector</b><div class="mcpc">curl -O https://west007-vante.github.io/cockpit-trinity/mcp/trinity_agent.py</div></div></div>
     <div class="mcpstep"><span class="mcpn">2</span><div><b>Crie o <code>.env</code> do seu agente</b> (a service key é local, nunca sobe)<div class="mcpc" id="mcpenv">TRINITY_URL=${SUPA_PUB}
 TRINITY_SERVICE_KEY=&lt;cole a service key que o Pyerri te passar&gt;
-TRINITY_AGENT_ID=${me.nickname?me.nickname.toLowerCase():'goggins'}
-TRINITY_OWNER=${me.nickname?me.nickname.toLowerCase():'goggins'}
+TRINITY_AGENT_ID=${aid}
+TRINITY_OWNER=${owner}   # CEO dono: steve(Pyerri) | goggins(Murilo) | rico(Davi)
 TRINITY_AGENT_NAME=${esc(me.nickname||'Goggins')}
 TRINITY_AGENT_ROLE=Criação de conteúdo em massa</div><button class="hchip on" onclick="copyEnv()">copiar .env</button></div></div>
     <div class="mcpstep"><span class="mcpn">3</span><div><b>Teste a conexão (fica ONLINE na aba Agentes)</b><div class="mcpc">set -a; source .env; set +a
