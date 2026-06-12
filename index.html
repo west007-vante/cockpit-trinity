@@ -335,6 +335,11 @@ body.authed .gate{display:none}
 
   <section class="cols" id="cols"></section>
 
+  <section class="panel" id="worklog-panel" style="margin-bottom:20px">
+    <div class="ph"><h3>🔨 Trabalho da equipe — automático (Claude Code)</h3><span class="live" style="background:var(--paper);color:var(--muted);border-color:var(--line)"><span class="dot" style="background:var(--orange6)"></span>nativo</span></div>
+    <div id="worklog"></div>
+  </section>
+
   <section class="lower">
     <div class="panel">
       <div class="ph"><h3>Atividade em tempo real</h3><span class="live" style="background:var(--paper);color:var(--muted);border-color:var(--line)"><span class="dot" style="background:var(--green)"></span>stream</span></div>
@@ -435,13 +440,34 @@ function renderFinal(){
   countUp($('#fgen'),gen,1000);countUp($('#fexp'),exp,1000);
 }
 
-function renderAll(flashId){renderKpis();renderAgents();renderFeed(flashId);renderFinal();}
+function renderWorklog(){
+  const wl=state.worklog||[];
+  const socios=[['steve','Steve'],['goggins','Goggins'],['rico','Rico']];
+  const ag=id=>(state.agents||[]).find(a=>a.id===id)||{};
+  const t=ts=>ts?rel(ts):'';
+  const card=(oid,fb)=>{
+    const a=ag(oid),nome=a.name||fb,ac=a.accent||'#F97316';
+    const mine=wl.filter(w=>w.owner===oid);
+    const doing=mine.filter(w=>w.status==='fazendo').sort((x,y)=>new Date(y.updated_at)-new Date(x.updated_at))[0];
+    const done=mine.filter(w=>w.status==='concluida').sort((x,y)=>new Date(y.updated_at)-new Date(x.updated_at)).slice(0,4);
+    return `<div style="border:1px solid var(--line);border-left:3px solid ${ac};border-radius:12px;padding:14px 16px;min-width:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <b style="font-family:'Space Grotesk';font-size:15px">${esc(nome)}</b>
+        ${doing?`<span style="font-size:11px;color:${ac};display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:${ac}"></span>fazendo agora</span>`:`<span style="font-size:11px;color:var(--muted)">parado</span>`}</div>
+      ${doing?`<div style="background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:10px"><div style="font-size:13.5px;font-weight:600">${esc(doing.title||'trabalhando')}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">📁 ${esc((doing.cwd||'').split('/').pop()||'—')} · ${t(doing.updated_at)}</div></div>`:''}
+      ${done.length?done.map(w=>`<div style="display:flex;gap:8px;padding:6px 0;border-top:1px solid var(--line)"><span style="color:var(--green);flex:none">✓</span><div style="min-width:0"><div style="font-size:12.5px;font-weight:500">${esc(w.title||'')}</div><div style="font-size:11px;color:var(--muted)">${esc(w.summary||'')} · ${t(w.updated_at)}</div></div></div>`).join(''):'<div style="font-size:12px;color:var(--muted);padding:6px 0">sem trabalho registrado ainda — assim que rodar algo no Claude Code, aparece aqui sozinho</div>'}
+    </div>`;};
+  const el=$('#worklog');if(el)el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">${socios.map(s=>card(s[0],s[1])).join('')}</div>`;
+}
+async function refreshWorklog(){try{const{data}=await sb.from('work_sessions').select('*').order('updated_at',{ascending:false}).limit(60);state.worklog=data||[];}catch(e){state.worklog=state.worklog||[];}renderWorklog();}
+function renderAll(flashId){renderKpis();renderAgents();renderWorklog();renderFeed(flashId);renderFinal();}
 
 async function loadAll(){
   const tabs=['cockpit_agents','cockpit_tasks','cockpit_results','cockpit_events'];
   const ords={cockpit_events:{col:'created_at',asc:false},cockpit_tasks:{col:'id',asc:true},cockpit_results:{col:'id',asc:true},cockpit_agents:{col:'created_at',asc:true}};
   for(const t of tabs){const o=ords[t];const{data,error}=await sb.from(t).select('*').order(o.col,{ascending:o.asc}).limit(80);
     if(error){console.warn(t,error.message);continue}state[t.replace('cockpit_','')]=data||[];}
+  try{const{data}=await sb.from('work_sessions').select('*').order('updated_at',{ascending:false}).limit(60);state.worklog=data||[];}catch(e){state.worklog=[];}
   renderAll();
   $('#conn').textContent='online ✓';$('#conn').style.color='var(--green)';
 }
@@ -453,6 +479,7 @@ function subscribe(){
     .on('postgres_changes',{event:'*',schema:'public',table:'cockpit_tasks'},async()=>{await refreshTasks();})
     .on('postgres_changes',{event:'*',schema:'public',table:'cockpit_results'},async()=>{const{data}=await sb.from('cockpit_results').select('*').order('id');state.results=data||[];renderKpis();renderAgents();renderFinal();})
     .on('postgres_changes',{event:'*',schema:'public',table:'cockpit_agents'},async()=>{const{data}=await sb.from('cockpit_agents').select('*');state.agents=data||[];renderAgents();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'work_sessions'},()=>{refreshWorklog();})
     .subscribe(s=>{if(s==='SUBSCRIBED'){$('#conn').textContent='online · realtime ✓';}});
 }
 
