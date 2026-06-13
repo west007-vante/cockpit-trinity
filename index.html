@@ -346,10 +346,10 @@ body.authed .gate{display:none}
       <div class="feed" id="feed"></div>
     </div>
     <div class="panel final">
-      <div class="ph"><h3>Resultado final esperado</h3></div>
-      <div class="ftop"><span class="fpct" id="fpct">0%</span><span class="flab">do alvo<br>do dia</span></div>
+      <div class="ph"><h3>Progresso real das ofertas</h3></div>
+      <div class="ftop"><span class="fpct" id="fpct">0%</span><span class="flab">médio da<br>esteira</span></div>
       <div class="fbar"><i id="fbar"></i></div>
-      <div class="fnums"><span>Gerado <b id="fgen">0</b></span><span>Esperado <b id="fexp">0</b></span></div>
+      <div class="fnums"><span>agora <b id="fgen">0</b>%</span><span>meta <b id="fexp">100</b>%</span></div>
       <div style="margin-top:18px;font-size:11.5px;color:var(--faint);line-height:1.6">
         Cada agente (Steve/Goggins/Rico) reporta no mesmo banco via Claude Code CLI nas máquinas dos sócios.
         Mudou lá, acende aqui — sem refresh.
@@ -433,8 +433,9 @@ function renderFeed(flashId){
 }
 
 function renderFinal(){
-  const key=state.results.filter(r=>['Criativos / dia','Posts / dia'].includes(r.metric));
-  const gen=key.reduce((s,r)=>s+Number(r.generated),0),exp=key.reduce((s,r)=>s+Number(r.expected),0);
+  // Progresso REAL das ofertas em andamento (esteira+produção), vindo do classificador/analista.
+  const r=state.results.find(x=>x.metric==='Progresso das ofertas')||{generated:0,expected:100};
+  const gen=Number(r.generated),exp=Number(r.expected)||100;
   const pct=exp?Math.min(100,Math.round(gen/exp*100)):0;
   $('#fpct').textContent=pct+'%';$('#fbar').style.width=pct+'%';
   countUp($('#fgen'),gen,1000);countUp($('#fexp'),exp,1000);
@@ -447,6 +448,8 @@ function renderWorklog(){
   const t=ts=>ts?rel(ts):'';
   const card=(oid,fb)=>{
     const a=ag(oid),nome=a.name||fb,ac=a.accent||'#F97316';
+    // badge do CLASSIFICADOR: relevante (oferta·categoria·%) vs ⚪ passa (fora da esteira)
+    const clf=w=>w.classified_at==null?'<span style="font-size:10px;color:var(--faint)">classificando…</span>':(!w.relevante?'<span style="font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 6px">⚪ fora da esteira</span>':`<span title="${esc(w.motivo||'')}" style="font-size:10px;color:#fff;background:${ac};border-radius:6px;padding:1px 6px">🎯 ${esc(w.offer_label||'oferta')} · ${esc(w.categoria||'')} · ${w.progresso||0}%</span>`);
     const mine=wl.filter(w=>w.owner===oid);
     const doing=mine.filter(w=>w.status==='fazendo').sort((x,y)=>new Date(y.updated_at)-new Date(x.updated_at))[0];
     const done=mine.filter(w=>w.status==='concluida').sort((x,y)=>new Date(y.updated_at)-new Date(x.updated_at)).slice(0,4);
@@ -454,8 +457,8 @@ function renderWorklog(){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <b style="font-family:'Space Grotesk';font-size:15px">${esc(nome)}</b>
         ${doing?`<span style="font-size:11px;color:${ac};display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:${ac}"></span>fazendo agora</span>`:`<span style="font-size:11px;color:var(--muted)">parado</span>`}</div>
-      ${doing?`<div style="background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:10px"><div style="font-size:13.5px;font-weight:600">${esc(doing.title||'trabalhando')}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">📁 ${esc((doing.cwd||'').split('/').pop()||'—')} · ${t(doing.updated_at)}</div></div>`:''}
-      ${done.length?done.map(w=>`<div style="display:flex;gap:8px;padding:6px 0;border-top:1px solid var(--line)"><span style="color:var(--green);flex:none">✓</span><div style="min-width:0"><div style="font-size:12.5px;font-weight:500">${esc(w.title||'')}</div><div style="font-size:11px;color:var(--muted)">${esc(w.summary||'')} · ${t(w.updated_at)}</div></div></div>`).join(''):'<div style="font-size:12px;color:var(--muted);padding:6px 0">sem trabalho registrado ainda — assim que rodar algo no Claude Code, aparece aqui sozinho</div>'}
+      ${doing?`<div style="background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:10px"><div style="font-size:13.5px;font-weight:600">${esc(doing.title||'trabalhando')}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">📁 ${esc((doing.cwd||'').split('/').pop()||'—')} · ${t(doing.updated_at)}</div><div style="margin-top:6px">${clf(doing)}</div></div>`:''}
+      ${done.length?done.map(w=>`<div style="display:flex;gap:8px;padding:6px 0;border-top:1px solid var(--line)"><span style="color:var(--green);flex:none">✓</span><div style="min-width:0"><div style="font-size:12.5px;font-weight:500">${esc(w.title||'')}</div><div style="font-size:11px;color:var(--muted)">${esc(w.summary||'')} · ${t(w.updated_at)}</div><div style="margin-top:4px">${clf(w)}</div></div></div>`).join(''):'<div style="font-size:12px;color:var(--muted);padding:6px 0">sem trabalho registrado ainda — assim que rodar algo no Claude Code, aparece aqui sozinho</div>'}
     </div>`;};
   const el=$('#worklog');if(el)el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">${socios.map(s=>card(s[0],s[1])).join('')}</div>`;
 }
@@ -561,7 +564,7 @@ function renderOfertas(){const cols=[['esteira','🟡 Na esteira'],['producao','
   $('#view-ofertas').innerHTML=`<div class="ofhead"><div class="oftot">R$ ${tot.toLocaleString('pt-BR')}</div><div class="oflab">resultado total · a esteira anda SOZINHA conforme as tarefas ligadas à oferta concluem</div></div>${composer}
     <div class="ofgrid">${cols.map(([st,lab])=>{const list=(state.offers||[]).filter(o=>o.status===st);
     return `<div class="panel"><div class="ph"><h3>${lab}</h3><span class="agcount">${list.length}</span></div>
-      ${list.map(o=>`<div class="ofcard"><div class="ofttl">${esc(o.title)}<span class="ofx" onclick="removeOffer(${o.id})">×</span></div><div class="ofmeta"><span class="st doing">${esc(o.tier||'')} · ${o.score||''}</span><span class="ofr">R$ ${Number(o.result_brl||0).toLocaleString('pt-BR')}</span></div></div>`).join('')||'<div class="agrole">vazio</div>'}</div>`;}).join('')}</div>`;}
+      ${list.map(o=>`<div class="ofcard"><div class="ofttl">${esc(o.title)}<span class="ofx" onclick="removeOffer(${o.id})">×</span></div><div class="ofmeta"><span class="st doing">${esc(o.tier||'')} · ${o.score||''}</span><span class="ofr">R$ ${Number(o.result_brl||0).toLocaleString('pt-BR')}</span></div><div class="pbar" style="margin-top:8px"><i style="width:${o.progresso||0}%"></i></div><div style="font-size:10.5px;color:var(--muted);margin-top:4px">${o.estagio?esc(o.estagio)+' · ':''}<b style="color:var(--orange6)">${o.progresso||0}%</b> pronto <span style="color:var(--faint)">· análise real do classificador</span></div></div>`).join('')||'<div class="agrole">vazio</div>'}</div>`;}).join('')}</div>`;}
 async function addOffer(){const title=$('#of-title').value.trim();if(!title)return;const niche=$('#of-niche').value.trim();
   await sb.from('cockpit_offers').insert({title,niche,status:'esteira',result_brl:0,tier:'novo',score:0});
   $('#of-title').value='';$('#of-niche').value='';const{data}=await sb.from('cockpit_offers').select('*').order('score',{ascending:false});state.offers=data||[];renderOfertas();}
