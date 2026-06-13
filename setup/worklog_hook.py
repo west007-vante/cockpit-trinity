@@ -48,12 +48,22 @@ def _load_env():
 
 def _req(method, url, key, body=None):
     data = json.dumps(body).encode() if body is not None else None
+    # return=minimal: NÃO pede a linha de volta. Essencial com a chave anon —
+    # a leitura é gated em authenticated, então um RETURNING (representation)
+    # faria a escrita falhar no SELECT pós-insert. Por isso o hook não depende
+    # do id do banco: ele referencia a linha pelo session_id único do turno.
     h = {"apikey": key, "Authorization": f"Bearer {key}",
-         "Content-Type": "application/json", "Prefer": "return=representation"}
+         "Content-Type": "application/json", "Prefer": "return=minimal"}
     r = urllib.request.Request(url, data=data, headers=h, method=method)
     with urllib.request.urlopen(r, timeout=4) as resp:
         raw = resp.read().decode()
         return json.loads(raw) if raw else []
+
+
+def _rpc(url, key, params):
+    """Chama a função worklog_report (SECURITY DEFINER). É o ÚNICO caminho de escrita:
+    a chave anon só EXECUTA essa função — não toca nas tabelas direto."""
+    return _req("POST", f"{url}/rest/v1/rpc/worklog_report", key, params)
 
 
 def _last_user_prompt(transcript_path):
@@ -115,14 +125,16 @@ def handle_post_tool(inp, url, key, owner):
     if os.path.exists(sp):
         st = json.load(open(sp))
     else:
-        # 1º trabalho do turno → cria a task "fazendo" no cockpit
+        # 1º trabalho do turno → cria a work_session "fazendo" no cockpit.
+        # db_sid = chave ÚNICA do turno (sid + epoch). Toda escrita vai pela função
+        # worklog_report; o db_sid identifica a linha (sem precisar do id do banco).
         title = _last_user_prompt(inp.get("transcript_path", "")) or f"trabalho no Claude Code ({os.path.basename(cwd) or host})"
-        st = {"row_id": None, "title": title, "files": [], "tools": {}, "cwd": cwd, "last_patch": 0}
+        db_sid = f"{sid}:{int(time.time())}"
+        st = {"db_sid": db_sid, "title": title, "files": [], "tools": {}, "cwd": cwd, "last_patch": 0}
         try:
-            row = _req("POST", f"{url}/rest/v1/work_sessions", key, {
-                "owner": owner, "host": host, "session_id": sid, "title": title,
-                "status": "fazendo", "cwd": cwd, "files": [], "tools": {}})
-            st["row_id"] = (row[0] if isinstance(row, list) and row else {}).get("id")
+            _rpc(url, key, {"p_owner": owner, "p_db_sid": db_sid, "p_status": "fazendo",
+                            "p_title": title, "p_host": host, "p_cwd": cwd,
+                            "p_files": [], "p_tools": {}})
         except Exception:
             pass
 
@@ -131,10 +143,10 @@ def handle_post_tool(inp, url, key, owner):
     st["tools"][tool] = st["tools"].get(tool, 0) + 1
 
     now = time.time()
-    if st.get("row_id") and (now - st.get("last_patch", 0)) > PATCH_THROTTLE_S:
+    if st.get("db_sid") and (now - st.get("last_patch", 0)) > PATCH_THROTTLE_S:
         try:
-            _req("PATCH", f"{url}/rest/v1/work_sessions?id=eq.{st['row_id']}", key,
-                 {"files": st["files"], "tools": st["tools"], "updated_at": "now()"})
+            _rpc(url, key, {"p_owner": owner, "p_db_sid": st["db_sid"], "p_status": "fazendo",
+                            "p_files": st["files"], "p_tools": st["tools"]})
             st["last_patch"] = now
         except Exception:
             pass
@@ -151,21 +163,14 @@ def handle_stop(inp, url, key, owner):
     except Exception:
         return
     summ = _summary(st.get("files", []), st.get("tools", {}))
-    rid = st.get("row_id")
+    db_sid = st.get("db_sid") or f"{sid}:0"
+    # uma chamada finaliza a work_session (concluida + resumo) E joga o evento no feed
     try:
-        if rid:
-            _req("PATCH", f"{url}/rest/v1/work_sessions?id=eq.{rid}", key,
-                 {"status": "concluida", "summary": summ, "files": st.get("files", []),
-                  "tools": st.get("tools", {}), "updated_at": "now()"})
-        else:
-            _req("POST", f"{url}/rest/v1/work_sessions", key, {
-                "owner": owner, "host": socket.gethostname(), "session_id": sid,
-                "title": st.get("title", ""), "status": "concluida", "summary": summ,
-                "cwd": st.get("cwd"), "files": st.get("files", []), "tools": st.get("tools", {})})
-        # joga no feed da home (cockpit_events) — visível na "Atividade em tempo real"
-        _req("POST", f"{url}/rest/v1/cockpit_events", key, {
-            "agent_id": owner, "kind": "done",
-            "message": f"✅ {st.get('title','trabalho')[:80]} — {summ}"})
+        _rpc(url, key, {
+            "p_owner": owner, "p_db_sid": db_sid, "p_status": "concluida",
+            "p_title": st.get("title"), "p_summary": summ,
+            "p_files": st.get("files", []), "p_tools": st.get("tools", {}),
+            "p_event": f"✅ {st.get('title','trabalho')[:80]} — {summ}"})
     except Exception:
         pass
     try:

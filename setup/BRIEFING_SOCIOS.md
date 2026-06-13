@@ -54,13 +54,6 @@ Pede pro Claude Code criar qualquer arquivinho de teste. Depois abra o cockpit:
 
 ## 🆘 Se der erro
 
-**Apareceu "❌ não achei SUPABASE_URL/KEY"?**
-Quer dizer que o instalador não achou sua chave da Trinity. Me chama (Pyerri) que eu te mando o comando completo já com a chave — é só trocar a última linha por esta (eu te passo a CHAVE no lugar de COLE_A_CHAVE_AQUI):
-```bash
-python3 ~/.steve/install_worklog.py rico --url https://fneholznpbjbvdswvuyb.supabase.co --key COLE_A_CHAVE_AQUI
-```
-*(Davi=rico, Murilo=goggins)*
-
 **Apareceu "command not found: python3"?**
 Roda isto uma vez e tenta de novo: `xcode-select --install` (instala as ferramentas do Mac).
 

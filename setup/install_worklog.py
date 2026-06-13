@@ -9,8 +9,9 @@ Uso (na máquina do sócio):
 Ele:
   1. instala o hook em ~/.steve/worklog_hook.py
   2. escreve ~/.steve/worklog.env (SUPABASE_URL + KEY + TRINITY_OWNER, chmod 600)
-     — pega as credenciais do .env do conector da Trinity que você já configurou
-       (ou passe --url/--key)
+     — usa a URL + anon key PÚBLICAS embutidas (o hook só grava no worklog, via RLS
+       escopado). Se a máquina tiver um .env do conector, ele tem precedência;
+       dá pra forçar com --url/--key. Sócio nenhum precisa receber a service key.
   3. liga os hooks PostToolUse + Stop no ~/.claude/settings.json (idempotente)
 
 Depois: REINICIE o Claude Code. Pronto — todo trabalho (criar/executar) vira
@@ -28,6 +29,18 @@ ENV_DST = os.path.join(STEVE_DIR, "worklog.env")
 SETTINGS = os.path.join(HOME, ".claude", "settings.json")
 HOOK_CMD = f'python3 {HOOK_DST}'
 WORK_MATCHER = "Write|Edit|MultiEdit|NotebookEdit|Bash"
+
+# URL + anon key PÚBLICAS da Trinity (já públicas no index.html / GitHub Pages —
+# seguro embutir). O hook só GRAVA nas tabelas do worklog via policy RLS escopada
+# aos 3 sócios; a SERVICE key NUNCA é distribuída pras máquinas dos sócios.
+# É o fallback: se a máquina já tiver um .env do conector (ex.: a do Pyerri), ele
+# tem precedência. Sócio sem .env nenhum cai aqui e instala sem pedir chave a ninguém.
+PUBLIC_URL = "https://fneholznpbjbvdswvuyb.supabase.co"
+PUBLIC_ANON_KEY = (
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+    "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuZWhvbHpucGJqYnZkc3d2dXliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NDQ2NzEsImV4cCI6MjA5MzEyMDY3MX0."
+    "AJMeZwBeI1BuAzSWL36Rk69-nLNW8CE1r9ORzZHNiLk"
+)
 
 # locais onde o .env do conector da Trinity costuma estar
 ENV_CANDIDATES = [
@@ -65,6 +78,9 @@ def resolve_creds(args):
         owner = owner or d.get("TRINITY_OWNER")
         if url and key:
             break
+    # fallback público: garante que o sócio NUNCA fica sem chave (e sem service key).
+    url = url or PUBLIC_URL
+    key = key or PUBLIC_ANON_KEY
     return url, key, owner
 
 
@@ -111,9 +127,7 @@ def main():
 
     url, key, env_owner = resolve_creds(args)
     owner = owner_arg or env_owner
-    if not (url and key):
-        print("❌ não achei SUPABASE_URL/KEY. Rode com --url ... --key ... ou deixe o .env do conector da Trinity acessível.")
-        return 1
+    using_public = (key == PUBLIC_ANON_KEY)
 
     os.makedirs(STEVE_DIR, exist_ok=True)
     # 1) hook
@@ -130,6 +144,7 @@ def main():
 
     print("✅ Worklog instalado.")
     print(f"   • hook:     {HOOK_DST}")
+    print(f"   • chave:    {'pública (anon) — escreve só no worklog, escopado' if using_public else 'do .env local'}")
     print(f"   • env:      {ENV_DST}  (owner={owner}, chmod 600)")
     print(f"   • settings: {SETTINGS}  ({'hooks ligados' if changed else 'já estava ligado'})")
     print("\n👉 REINICIE o Claude Code (feche e abra) pra ativar.")
