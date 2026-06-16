@@ -230,23 +230,51 @@ body.authed .gate{display:none}
 .ofmeta{display:flex;align-items:center;justify-content:space-between}
 .ofr{font-family:'JetBrains Mono';font-size:12.5px;font-weight:600;color:var(--green)}
 /* CHAT */
-.chatwrap{display:grid;grid-template-columns:286px 1fr;gap:16px;height:564px}
-.chatlist{background:var(--card);border:1px solid var(--line);border-radius:var(--r-xl);padding:14px;overflow:auto;box-shadow:0 1px 2px rgba(23,20,16,.04),0 14px 40px -26px rgba(23,20,16,.3)}
-.convitem{display:flex;align-items:center;gap:10px;padding:9px;border-radius:11px;cursor:pointer;transition:background .15s}
+.chatwrap{display:grid;grid-template-columns:264px 1fr;gap:16px;height:564px}
+.chatlist{background:var(--card);border:1px solid var(--line);border-radius:var(--r-xl);padding:12px;overflow:auto;box-shadow:0 1px 2px rgba(23,20,16,.04),0 14px 40px -26px rgba(23,20,16,.3)}
+.cl-h{display:flex;justify-content:space-between;align-items:center;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);font-weight:600;margin:4px 4px 8px}
+.cl-new{background:none;border:1px solid var(--line);border-radius:8px;color:var(--ink2);font-size:11px;padding:3px 9px;cursor:pointer;font-family:Inter}
+.cl-new:hover{border-color:var(--orange);color:var(--orange6)}
+.cl-empty{font-size:12px;color:var(--faint);padding:8px 4px}
+.convitem{display:flex;align-items:center;gap:10px;padding:8px;border-radius:11px;cursor:pointer;transition:background .15s}
 .convitem:hover{background:var(--paper)}.convitem.active{background:var(--tint)}
-.convav{width:32px;height:32px;border-radius:9px;background:var(--orange6);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;font-family:'Space Grotesk';flex:none}
-.convttl{font-size:13px;font-weight:600;color:var(--ink2)}
+.cav-wrap{position:relative;flex:none}
+.cav{width:34px;height:34px;border-radius:50%;background:var(--orange6);color:#fff;display:grid;place-items:center;font-weight:600;font-size:14px;font-family:'Space Grotesk';overflow:hidden}
+.cav img{width:100%;height:100%;object-fit:cover}
+.cdot{position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;background:#16A34A;border:2px solid var(--card)}
+.cv-meta{min-width:0}
+.convttl{font-size:13px;font-weight:600;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cv-sub{font-size:11px;color:var(--faint)}
 .chatthread{background:var(--card);border:1px solid var(--line);border-radius:var(--r-xl);display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(23,20,16,.04),0 14px 40px -26px rgba(23,20,16,.3);overflow:hidden}
 .chatthread.empty{align-items:center;justify-content:center;text-align:center;color:var(--muted);font-weight:500;line-height:1.6}
-.msgs{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:10px}
-.msg{max-width:72%;align-self:flex-start}
-.msg.mine{align-self:flex-end;text-align:right}
-.msg .mb{background:var(--paper2);border:1px solid var(--line);border-radius:14px;padding:9px 13px;font-size:13.5px;color:var(--ink2);display:inline-block;text-align:left}
+.ct-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
+.ct-title{font-size:14px;font-weight:600;color:var(--ink)}
+.ct-toggle{margin-left:auto;display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.ct-toggle button{background:none;border:0;font-size:12px;padding:5px 12px;cursor:pointer;color:var(--muted);font-family:Inter}
+.ct-toggle button.on{background:var(--orange);color:#fff}
+.ct-body{flex:1;overflow:auto;display:flex;flex-direction:column}
+.msgs{flex:1;padding:18px;display:flex;flex-direction:column;gap:12px}
+.msg{display:flex;gap:8px;align-items:flex-end;max-width:82%;align-self:flex-start}
+.msg.mine{align-self:flex-end;flex-direction:row-reverse}
+.m-av .cav{width:26px;height:26px;font-size:11px}
+.m-body{min-width:0}
+.msg .mb{background:var(--paper2);border:1px solid var(--line);border-radius:14px;padding:9px 13px;font-size:13.5px;color:var(--ink2);line-height:1.5}
 .msg.mine .mb{background:linear-gradient(150deg,var(--orange),var(--orange6));color:#fff;border:0}
 .msg .mt{font-size:10.5px;color:var(--faint);margin-top:3px}
-.chatinput{display:flex;gap:10px;padding:12px;border-top:1px solid var(--line)}
-.chatinput input{flex:1;border:1px solid var(--line2);border-radius:99px;height:40px;padding:0 16px;font-size:13px;background:var(--paper2);outline:none;font-family:Inter}
-.chatinput input:focus{border-color:var(--orange)}
+.msg.mine .mt{text-align:right}
+.cstlog{flex:1;padding:14px;display:flex;flex-direction:column;gap:3px}
+.cst-row{display:flex;gap:9px;align-items:center;padding:8px;border-radius:10px}
+.cst-row:hover{background:var(--paper)}
+.cst-meta{min-width:0}
+.cst-t{font-size:13px;font-weight:500;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cst-s{font-size:11px;color:var(--faint)}
+.cst-live{color:var(--orange6);font-weight:600}
+.ct-input{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--line);align-items:center}
+.ci-clip{cursor:pointer;font-size:16px;color:var(--muted);flex:none}
+.ct-input input#chatin{flex:1;border:1px solid var(--line2);border-radius:99px;height:40px;padding:0 16px;font-size:13px;background:var(--paper2);outline:none;font-family:Inter;color:var(--ink)}
+.ct-input input#chatin:focus{border-color:var(--orange)}
+.ci-send{width:38px;height:38px;border:0;border-radius:50%;background:var(--orange);color:#fff;font-size:17px;cursor:pointer;flex:none;display:grid;place-items:center}
+.ci-send:hover{background:var(--orange6)}
 @media(max-width:1000px){.agdgrid,.ofgrid{grid-template-columns:1fr}.chatwrap{grid-template-columns:1fr;height:auto}}
 /* DARK THEME */
 [data-theme="dark"]{--paper:#0F0E0C;--paper2:#17150F;--card:#1B1814;--ink:#F5F1EA;--ink2:#D8D2C6;--muted:#938C7E;--faint:#615B50;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.15)}
@@ -462,7 +490,7 @@ function renderWorklog(){
     </div>`;};
   const el=$('#worklog');if(el)el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">${socios.map(s=>card(s[0],s[1])).join('')}</div>`;
 }
-async function refreshWorklog(){try{const{data}=await sb.from('work_sessions').select('*').order('updated_at',{ascending:false}).limit(60);state.worklog=data||[];}catch(e){state.worklog=state.worklog||[];}renderWorklog();}
+async function refreshWorklog(){try{const{data}=await sb.from('work_sessions').select('*').order('updated_at',{ascending:false}).limit(60);state.worklog=data||[];}catch(e){state.worklog=state.worklog||[];}renderWorklog();if(VIEW==='chat'&&CHATMODE==='constr')renderChat();}
 function renderAll(flashId){renderKpis();renderAgents();renderWorklog();renderFeed(flashId);renderFinal();}
 
 async function loadAll(){
@@ -645,20 +673,35 @@ async function sendMsg(){const me=window.ME;const inp=$('#chatin');if(!inp)retur
       await sb.from('cockpit_tasks').insert({agent_id:ag?ag.id:'goggins',assignee:who.name,title:mm[2],status:'todo',progress:0});
       body='📋 Tarefa atribuída a @'+who.name+': '+mm[2];}}
   await sb.from('cockpit_messages').insert({conversation_id:CONV,sender:me.id,sender_name:me.nickname,body});}
+function setChatMode(m){CHATMODE=m;renderChat();}
 function renderChat(){const me=window.ME||{};window._peers=chatPeers();const cur=(state.convs||[]).find(c=>c.id===CONV);
-  const list=`<div class="chatlist"><div class="ph2" style="display:flex;justify-content:space-between;align-items:center">Conversas<button class="hchip on" onclick="openGroupModal()">+ Grupo</button></div>
-    ${(state.convs||[]).map(c=>`<div class="convitem${c.id===CONV?' active':''}" data-cid="${c.id}"><div class="convav">${c.is_group?'#':((c.title||'?')[0]||'?').toUpperCase()}</div><div class="convttl">${esc(c.title||'Conversa')}</div></div>`).join('')||'<div class="agrole" style="padding:8px 4px">nenhuma ainda</div>'}
-    <div class="ph2" style="margin-top:16px">Começar conversa</div>
-    ${window._peers.map((p,i)=>`<div class="convitem peer" data-pi="${i}"><div class="convav" style="background:var(--paper);color:var(--ink2);border:1px solid var(--line)">${(p.name[0]||'?').toUpperCase()}</div><div><div class="convttl">${esc(p.name)}</div><div class="agrole">${p.kind}</div></div></div>`).join('')}</div>`;
+  const onSet=new Set([...(state.subagents||[]).filter(s=>isOnline(s.last_heartbeat)).map(s=>s.id),...((state.profilesAll||[]).filter(p=>p.online).map(p=>p.id))]);
+  const av=(id,name,sz)=>{const ph=actorPhoto(id);const ini=esc(((name||'?')[0]||'?').toUpperCase());return `<span class="cav" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*0.42)}px">${ph?`<img src="${ph}" onerror="this.parentElement.textContent='${ini}'">`:ini}</span>`;};
+  const dot=id=>onSet.has(id)?'<span class="cdot"></span>':'';
+  const list=`<div class="chatlist">
+    <div class="cl-h"><span>Conversas</span><button class="cl-new" onclick="openGroupModal()">+ grupo</button></div>
+    ${(state.convs||[]).map(c=>`<div class="convitem${c.id===CONV?' active':''}" data-cid="${c.id}"><span class="cav-wrap"><span class="cav" style="width:34px;height:34px">${c.is_group?'#':esc(((c.title||'?')[0]||'?').toUpperCase())}</span></span><div class="cv-meta"><div class="convttl">${esc(c.title||'Conversa')}</div></div></div>`).join('')||'<div class="cl-empty">nenhuma ainda</div>'}
+    <div class="cl-h" style="margin-top:14px"><span>Começar conversa</span></div>
+    ${window._peers.map((p,i)=>`<div class="convitem peer" data-pi="${i}"><span class="cav-wrap">${av(p.id,p.name,34)}${dot(p.id)}</span><div class="cv-meta"><div class="convttl">${esc(p.name)}</div><div class="cv-sub">${esc(p.kind)}</div></div></div>`).join('')}
+  </div>`;
   const memBar=cur&&cur.is_group?`<div class="membar">${(state.convMembers||[]).map(mb=>`<span class="memchip">${esc(mb.member_name||mb.member)}${mb.member!==me.id?`<span class="memx" onclick="removeMember('${mb.member}')">×</span>`:''}</span>`).join('')}</div>`:'';
-  const thread=CONV?`<div class="chatthread">${memBar}<div class="msgs" id="msgs">${(state.msgs||[]).map(m=>`<div class="msg ${m.sender===me.id?'mine':''}"><div class="mb">${m.image_url?`<img src="${m.image_url}" class="msgimg">`:''}${m.body?esc(m.body):''}</div><div class="mt">${esc(m.sender_name||'')} · ${rel(m.created_at)}</div></div>`).join('')||'<div class="agrole" style="margin:auto">sem mensagens — manda a primeira (dica: "@Steve faz X" cria tarefa)</div>'}</div>
-      <div class="chatinput"><label class="imgbtn">📎<input type="file" accept="image/*" style="display:none" onchange="uploadChatImage(event)"></label><input id="chatin" placeholder="mensagem… (ou @Nome tarefa)"><button class="gbtn" style="width:auto;padding:0 18px;height:40px;margin:0" id="chatsend">Enviar</button></div></div>`
-    :`<div class="chatthread empty"><div>Escolha uma conversa, comece uma nova, ou crie um grupo 👈<br><span style="font-size:12.5px;color:var(--faint)">sócios e agentes · imagens 📎 · "@Nome tarefa" atribui task</span></div></div>`;
-  $('#view-chat').innerHTML=`<div class="chatwrap">${list}${thread}</div>
+  const head=`<div class="ct-head"><div class="ct-title">${CHATMODE==='constr'?'🔨 Construção — trabalho ao vivo':esc((cur&&cur.title)||'Conversa')}</div><div class="ct-toggle"><button class="${CHATMODE!=='constr'?'on':''}" onclick="setChatMode('chat')">chat</button><button class="${CHATMODE==='constr'?'on':''}" onclick="setChatMode('constr')">construção</button></div></div>`;
+  let body;
+  if(CHATMODE==='constr'){
+    const wl=(state.worklog||[]).slice(0,14).map(w=>`<div class="cst-row"><span class="cav-wrap">${av(w.owner,w.owner,28)}${dot(w.owner)}</span><div class="cst-meta"><div class="cst-t">${esc(w.title||'trabalho')}</div><div class="cst-s">${w.status==='fazendo'?'<span class="cst-live">● fazendo</span>':'✓ concluída'}${w.relevante?` · <b style="color:var(--orange6)">${esc(w.offer_label||'oferta')} ${w.progresso||0}%</b>`:(w.classified_at?' · fora da esteira':'')} · ${rel(w.updated_at)}</div></div></div>`).join('')||'<div class="cl-empty" style="margin:auto">sem trabalho registrado ainda — assim que rodar algo no Claude Code aparece aqui</div>';
+    body=`<div class="cstlog">${wl}</div>`;
+  }else if(CONV){
+    const msgs=(state.msgs||[]).map(m=>{const mine=m.sender===me.id;return `<div class="msg ${mine?'mine':''}">${mine?'':`<span class="m-av">${av(m.sender,m.sender_name,26)}</span>`}<div class="m-body"><div class="mb">${m.image_url?`<img src="${m.image_url}" class="msgimg">`:''}${m.body?esc(m.body):''}</div><div class="mt">${mine?'':esc(m.sender_name||'')+' · '}${rel(m.created_at)}</div></div></div>`;}).join('')||'<div class="cl-empty" style="margin:auto">sem mensagens — manda a primeira (dica: "@Steve faz X" cria tarefa)</div>';
+    body=`${memBar}<div class="msgs" id="msgs">${msgs}</div>`;
+  }else{
+    body=`<div class="cl-empty" style="margin:auto;text-align:center;line-height:1.7">Escolha uma conversa ou comece uma nova 👈<br><span class="cv-sub">sócios e agentes · imagens 📎 · "@Nome tarefa" atribui task</span></div>`;
+  }
+  const composer=(CHATMODE!=='constr'&&CONV)?`<div class="ct-input"><label class="ci-clip">📎<input type="file" accept="image/*" style="display:none" onchange="uploadChatImage(event)"></label><input id="chatin" placeholder="mensagem… (ou @Nome tarefa)"><button class="ci-send" id="chatsend" aria-label="Enviar">↑</button></div>`:'';
+  $('#view-chat').innerHTML=`<div class="chatwrap">${list}<div class="chatthread">${head}<div class="ct-body">${body}</div>${composer}</div></div>
     <div class="gmodal" id="gmodal" style="display:none"><div class="gmcard"><div class="ph"><h3>Novo grupo</h3><button class="memx" onclick="closeGroupModal()" style="font-size:18px">×</button></div><div id="gmbody"></div><button class="savep" style="margin-top:14px;width:100%" onclick="createGroup()">Criar grupo</button></div></div>`;
   document.querySelectorAll('#view-chat .convitem:not(.peer)').forEach(b=>b.onclick=()=>openConv(+b.dataset.cid));
   document.querySelectorAll('#view-chat .convitem.peer').forEach(b=>b.onclick=()=>startConvWith(window._peers[+b.dataset.pi]));
-  if(CONV){const s=$('#chatsend');if(s)s.onclick=sendMsg;const ci=$('#chatin');if(ci)ci.addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});const mm2=$('#msgs');if(mm2)mm2.scrollTop=mm2.scrollHeight;}}
+  if(CONV&&CHATMODE!=='constr'){const s=$('#chatsend');if(s)s.onclick=sendMsg;const ci=$('#chatin');if(ci)ci.addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});const mm2=$('#msgs');if(mm2)mm2.scrollTop=mm2.scrollHeight;}}
 
 // ── TEMA (claro/escuro + cor secundária) ──
 function hexToRgb(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
@@ -710,7 +753,7 @@ function loadSavedTheme(){try{return JSON.parse(localStorage.getItem('trinity_th
 async function boot(){if(booted)return;booted=true;await loadProfile();applyTheme((window.ME&&window.ME.theme)||loadSavedTheme());renderThemePanel();await loadAll();await loadFeed();await loadExtra();startPresence();subscribe();subscribeFeed();subscribeExtra();renderTabs();setView('cockpit');}
 
 // ── NAV / VIEWS ──
-let VIEW='cockpit';let chatUnread=0;
+let VIEW='cockpit';let chatUnread=0;let CHATMODE='chat';
 const VIEWS=[{k:'cockpit',label:'Cockpit'},{k:'feed',label:'Feed'},{k:'agentes',label:'Agentes'},{k:'chat',label:'Chat'},{k:'vendas',label:'Vendas'},{k:'tarefas',label:'Tarefas'},{k:'ofertas',label:'Ofertas'},{k:'mcp',label:'MCP'},{k:'perfil',label:'Perfil'}];
 const ALLVIEWS=VIEWS.map(v=>v.k);
 function renderTabs(){$('#tabs').innerHTML=VIEWS.map(v=>{let n='';if(v.k==='feed'&&state.posts&&state.posts.length)n=`<span class="tn">${state.posts.length}</span>`;if(v.k==='chat'&&chatUnread)n=`<span class="tn">${chatUnread}</span>`;
