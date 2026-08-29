@@ -35,20 +35,15 @@ WORK_MATCHER = "Write|Edit|MultiEdit|NotebookEdit|Bash"
 # aos 3 sócios; a SERVICE key NUNCA é distribuída pras máquinas dos sócios.
 # É o fallback: se a máquina já tiver um .env do conector (ex.: a do Pyerri), ele
 # tem precedência. Sócio sem .env nenhum cai aqui e instala sem pedir chave a ninguém.
-PUBLIC_URL = "https://fneholznpbjbvdswvuyb.supabase.co"
+PUBLIC_URL = "https://rlrxeegnwjsmxwzoytiz.supabase.co"
 PUBLIC_ANON_KEY = (
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-    "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuZWhvbHpucGJqYnZkc3d2dXliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NDQ2NzEsImV4cCI6MjA5MzEyMDY3MX0."
-    "AJMeZwBeI1BuAzSWL36Rk69-nLNW8CE1r9ORzZHNiLk"
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJscnhlZWdud2pzbXh3em95dGl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzOTcxMDEsImV4cCI6MjA4OTk3MzEwMX0.jWsEO2sx5Iu5NxIQt5TXPCKzqsBqRngVcE5aBVFxWgw"
 )
 
 # locais onde o .env do conector da Trinity costuma estar
-ENV_CANDIDATES = [
-    ENV_DST,
-    os.path.join(HOME, "cockpit-trinity", ".env"),
-    os.path.join(HOME, "Dev", "cockpit-trinity", ".env"),
-    os.path.join(HOME, "Dev", "steve-backend", ".env"),
-]
+ENV_CANDIDATES = []  # zerado de propósito: o banco antigo morreu e um .env velho
+                     # na máquina apontaria pro lugar errado. Manda a URL embutida;
+                     # pra outro banco, use --url/--key explicitamente.
 
 
 def _read_env_file(path):

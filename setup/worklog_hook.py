@@ -63,7 +63,7 @@ def _req(method, url, key, body=None):
 def _rpc(url, key, params):
     """Chama a função worklog_report (SECURITY DEFINER). É o ÚNICO caminho de escrita:
     a chave anon só EXECUTA essa função — não toca nas tabelas direto."""
-    return _req("POST", f"{url}/rest/v1/rpc/worklog_report", key, params)
+    return _req("POST", f"{url}/rest/v1/rpc/trinity_worklog_report", key, params)
 
 
 def _last_user_prompt(transcript_path):
