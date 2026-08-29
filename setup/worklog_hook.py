@@ -66,6 +66,29 @@ def _rpc(url, key, params):
     return _req("POST", f"{url}/rest/v1/rpc/trinity_worklog_report", key, params)
 
 
+# Coisas que o Claude Code injeta no turno e NÃO são o que a pessoa digitou:
+# conteúdo de skill, lembrete de sistema, corpo de slash command. Se isso virar
+# título, o worklog mostra tripa interna pro sócio em vez do pedido real.
+_LIXO = ("<", "base directory for this skill", "caveat:", "<system-reminder>",
+         "<command-name>", "<command-message>", "the user opened the file")
+
+
+def _e_prompt_humano(text):
+    if not text:
+        return False
+    t = text.lstrip().lower()
+    if any(t.startswith(p) for p in _LIXO):
+        return False
+    if "<system-reminder>" in t or "base directory for this skill" in t:
+        return False
+    return len(text) <= 600      # prompt digitado não costuma passar disso
+
+
+def _encurtar(t, n=120):
+    t = " ".join((t or "").split())          # tira quebra de linha e espaço duplo
+    return t if len(t) <= n else t[:n - 1].rstrip() + "…"
+
+
 def _last_user_prompt(transcript_path):
     """Última mensagem HUMANA do transcript = o que ele pediu (vira o título)."""
     try:
@@ -87,9 +110,9 @@ def _last_user_prompt(transcript_path):
                     continue
                 text = " ".join(b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text")
             text = (text or "").strip()
-            if text and not text.startswith("<"):  # ignora prompts de sistema/comando
+            if _e_prompt_humano(text):
                 title = text
-        return title[:160]
+        return _encurtar(title)
     except Exception:
         return ""
 
