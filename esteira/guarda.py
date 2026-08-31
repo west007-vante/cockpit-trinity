@@ -215,15 +215,17 @@ def conferir_no(no):
             out.append(f'"{nome}": o corpo do webhook precisa ser JSON (objeto ou lista).')
 
     if tipo == "terminal":
-        acao = no.get("acao") or "list"
-        if acao not in ("list", "recruit", "ask", "connect", "notify", "dismiss"):
+        acao = no.get("acao") or "criar"
+        if acao not in ("criar", "digitar", "esperar", "ler", "fechar"):
             out.append(f'"{nome}": ação de terminal desconhecida: {acao}')
-        if acao in ("recruit", "ask", "connect", "dismiss") and not (no.get("nome") or "").strip():
-            out.append(f'"{nome}": a ação {acao} precisa do NOME do terminal.')
-        if acao in ("ask", "notify") and not (no.get("texto") or "").strip():
+        if not (no.get("nome") or "").strip():
+            out.append(f'"{nome}": diga o NOME do terminal (é como o fluxo o encontra).')
+        if acao in ("digitar", "esperar") and not (no.get("texto") or "").strip():
             out.append(f'"{nome}": a ação {acao} precisa do TEXTO.')
-        for achado, oque in vermelho(no.get("texto") or ""):
-            out.append(f'🔴 "{nome}": o pedido ao terminal manda {oque} — "{achado}". Passa por você.')
+        if acao == "digitar":
+            # digitar num shell É executar comando — a lista vermelha vale inteira
+            for achado, oque in vermelho(no.get("texto") or ""):
+                out.append(f'🔴 "{nome}": digitaria {oque} — "{achado}". Passa por você.')
 
     if tipo == "app":
         if not (no.get("app") or "").strip():

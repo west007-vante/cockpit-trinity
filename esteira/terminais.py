@@ -10,6 +10,7 @@ servidor fecha os shells — igual fechar o app de terminal).
 """
 import base64
 import fcntl
+import secrets
 import os
 import pty
 import signal
@@ -28,7 +29,9 @@ CAP = 400_000          # bytes de história por terminal — além disso, esquec
 def criar(nome="terminal", pasta="~", x=200, y=200):
     with _LOCK:
         _SEQ["n"] += 1
-        tid = f"t{_SEQ['n']}"
+        # id único ENTRE reinícios do servidor: a página do canvas sobrevive ao
+        # boot e um "t1" novo colidiria com o "t1" morto que ela ainda mostra
+        tid = f"t{_SEQ['n']}-{secrets.token_hex(3)}"
     master, slave = pty.openpty()
     env = dict(os.environ)
     env.update(TERM="xterm-256color", LANG=env.get("LANG") or "pt_BR.UTF-8",

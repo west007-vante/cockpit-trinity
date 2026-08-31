@@ -254,62 +254,102 @@ def faz_webhook(no, modo, saida_anterior=""):
         return {"ok": False, "saida": f"o destino não aceitou: {e}"}
 
 
-FILA_MAESTRI = os.path.join(CASA, ".maestri-fila")
+def _term_achar(nome):
+    import terminais
+    for t in terminais.lista():
+        if t["nome"] == nome and t["vivo"]:
+            return t
+    return None
 
 
-def _ponte_viva():
-    try:
-        return time.time() - int(open(os.path.join(FILA_MAESTRI, ".ponte-viva")).read().strip()) < 15
-    except Exception:
-        return False
+def _sem_ansi(texto):
+    """Saída de terminal vem suja de códigos de cor/cursor. Pra virar contexto
+    de agente ou condição, entra limpa."""
+    import re
+    texto = re.sub(r"\x1b\][^\x07\x1b]*(\x07|\x1b\\)", "", texto)
+    texto = re.sub(r"\x1b\[[0-9;?]*[a-zA-Z]", "", texto)
+    return texto.replace("\r", "")
 
 
 def faz_terminal(no, modo):
-    """Nó 🖥️ Terminal — comanda o canvas do Maestri PELA PONTE (um terminal
-    dentro do app rodando maestri-ponte.sh). recruit cria terminal, ask manda
-    pedido e espera a resposta do agente, connect liga, notify avisa o dono."""
-    import shlex
-    acao = no.get("acao") or "list"
-    linha = {"list": "list",
-             "recruit": lambda: "recruit " + shlex.quote(no.get("nome", "Novo")) +
-                        ((" --dir " + shlex.quote(os.path.expanduser(no["dir"]))) if no.get("dir") else "") +
-                        ((" --command " + shlex.quote(no["comando"])) if no.get("comando") else ""),
-             "ask": lambda: "ask " + shlex.quote(no.get("nome", "")) + " " + shlex.quote(no.get("texto", "")),
-             "connect": lambda: "connect " + shlex.quote(no.get("nome", "")) + " " + shlex.quote(no.get("para", "")),
-             "notify": lambda: "notify " + shlex.quote(no.get("texto", "")),
-             "dismiss": lambda: "dismiss " + shlex.quote(no.get("nome", "")),
-             }.get(acao)
-    if linha is None:
-        return {"ok": False, "saida": f"ação desconhecida no terminal: {acao}"}
-    linha = linha if isinstance(linha, str) else linha()
+    """Nó 🖥️ — o FLUXO operando os terminais VIVOS do canvas. O que você faz
+    com as mãos (criar, digitar, ler), a automação faz sozinha — e você VÊ:
+    o terminal nasce e trabalha na sua frente, no canvas.
+
+      criar    abre um shell real no canvas (idempotente: nome já vivo = reusa)
+      digitar  manda texto pro shell (com Enter, a não ser que enter=false)
+      esperar  segura o fluxo até um texto aparecer na saída (ou estourar)
+      ler      devolve as últimas linhas (vira contexto pro próximo nó)
+      fechar   encerra o shell
+    """
+    import base64
+    import terminais
+    acao = no.get("acao") or "criar"
+    nome = (no.get("nome") or "").strip()
+
     if modo == "ensaio":
-        return {"ok": True, "ensaio": True, "saida": f"[ensaio] pediria à ponte: maestri {linha}"}
-    if not _ponte_viva():
-        return {"ok": False, "saida":
-                "a ponte do Maestri não está de pé. Abra o Maestri, crie um terminal "
-                "e rode nele:  bash ~/esteira/maestri-ponte.sh  (deixe aberto)"}
-    os.makedirs(FILA_MAESTRI, exist_ok=True)
-    rid = f"{int(time.time()*1000)}"
-    with open(os.path.join(FILA_MAESTRI, rid + ".cmd"), "w", encoding="utf-8") as f:
-        f.write(linha)
-    limite = min(no.get("timeout_s") or 180, 900)
-    t0 = time.time()
-    done = os.path.join(FILA_MAESTRI, rid + ".done")
-    while time.time() - t0 < limite:
-        if os.path.exists(done):
-            saida = open(done, encoding="utf-8").read()[:8000]
-            try:
-                rc = int(open(os.path.join(FILA_MAESTRI, rid + ".rc")).read().strip())
-            except Exception:
-                rc = 0
-            for ext in (".done", ".rc"):
-                try:
-                    os.remove(os.path.join(FILA_MAESTRI, rid + ext))
-                except Exception:
-                    pass
-            return {"ok": rc == 0, "saida": saida or "(sem saída)"}
-        time.sleep(1)
-    return {"ok": False, "saida": f"a ponte não respondeu em {limite}s (o terminal dela ainda está aberto?)"}
+        desc = {"criar": f"abriria o terminal {nome!r} em {no.get('pasta') or '~'}",
+                "digitar": f"digitaria em {nome!r}: {(no.get('texto') or '')[:120]!r}",
+                "esperar": f"esperaria {nome!r} mostrar {(no.get('texto') or '')[:80]!r}",
+                "ler": f"leria as últimas {no.get('linhas') or 30} linhas de {nome!r}",
+                "fechar": f"fecharia o terminal {nome!r}"}.get(acao, acao)
+        return {"ok": True, "ensaio": True, "saida": f"[ensaio] {desc}"}
+
+    if acao == "criar":
+        ja = _term_achar(nome)
+        if ja:
+            return {"ok": True, "saida": f"o terminal {nome!r} já está vivo — reusando (id {ja['id']})"}
+        n_vivos = len([t for t in terminais.lista() if t["vivo"]])
+        info = terminais.criar(nome or "terminal", no.get("pasta") or "~",
+                               240 + (n_vivos % 3) * 600, 140 + (n_vivos // 3) * 380)
+        time.sleep(1.0)          # o zsh sobe e pinta o prompt
+        return {"ok": True, "saida": f"terminal {nome!r} aberto no canvas (id {info['id']})"}
+
+    t = _term_achar(nome)
+    if not t:
+        vivos = ", ".join(x["nome"] for x in terminais.lista() if x["vivo"]) or "nenhum"
+        return {"ok": False, "saida": f"não achei o terminal {nome!r} vivo. Vivos: {vivos}"}
+
+    if acao == "digitar":
+        texto = no.get("texto") or ""
+        if no.get("enter", True):
+            texto += "\n"
+        ok = terminais.entrada(t["id"], base64.b64encode(texto.encode()).decode())
+        return {"ok": ok, "saida": f"digitado em {nome!r}: {texto.strip()[:200]!r}"}
+
+    if acao == "esperar":
+        alvo = no.get("texto") or ""
+        limite = min(no.get("timeout_s") or 120, guarda.TIMEOUT_MAX_S)
+        marco = terminais.saida(t["id"], 0)["desde"]     # só o que vier DAQUI em diante
+        acumulado = ""
+        t0 = time.time()
+        while time.time() - t0 < limite:
+            if guarda.panico_ligado():
+                return {"ok": False, "saida": "freio de pânico puxado durante a espera"}
+            time.sleep(0.5)
+            r = terminais.saida(t["id"], marco)
+            if r is None:
+                return {"ok": False, "saida": f"o terminal {nome!r} fechou no meio da espera"}
+            marco = r["desde"]
+            acumulado += _sem_ansi(base64.b64decode(r["dados"]).decode("utf-8", "replace"))
+            if alvo and alvo in acumulado:
+                return {"ok": True, "saida": f"apareceu {alvo!r} depois de {round(time.time()-t0,1)}s"}
+            if not r["vivo"]:
+                return {"ok": False, "saida": f"o shell de {nome!r} terminou sem mostrar {alvo!r}"}
+        return {"ok": False, "saida": f"{alvo!r} não apareceu em {limite}s"}
+
+    if acao == "ler":
+        r = terminais.saida(t["id"], 0)
+        limpo = _sem_ansi(base64.b64decode(r["dados"]).decode("utf-8", "replace"))
+        linhas = [l for l in limpo.splitlines() if l.strip()]
+        n = int(no.get("linhas") or 30)
+        return {"ok": True, "saida": "\n".join(linhas[-n:]) or "(vazio)"}
+
+    if acao == "fechar":
+        terminais.fechar(t["id"])
+        return {"ok": True, "saida": f"terminal {nome!r} fechado"}
+
+    return {"ok": False, "saida": f"ação desconhecida: {acao}"}
 
 
 def faz_app(no, modo, saida_anterior=""):

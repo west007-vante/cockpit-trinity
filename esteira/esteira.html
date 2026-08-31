@@ -600,14 +600,15 @@ function abrirGaveta(id){
   } else if(n.tipo==="espera"){
     h += '<label>Minutos</label><input id="gvMinutos" type="number" min="1" max="1440" value="'+(n.minutos||5)+'">';
   } else if(n.tipo==="terminal"){
-    h += '<label>Ação no Maestri</label><select id="gvAcao">'+
-         [["list","listar o canvas"],["recruit","criar terminal"],["ask","pedir a um agente"],
-          ["connect","ligar dois"],["notify","avisar o dono"],["dismiss","fechar terminal"]].map(function(o){
-           return '<option value="'+o[0]+'"'+((n.acao||"list")===o[0]?" selected":"")+'>'+o[1]+'</option>';}).join("")+
+    h += '<label>Ação (nos terminais VIVOS do canvas)</label><select id="gvAcao">'+
+         [["criar","criar terminal no canvas"],["digitar","digitar no terminal"],
+          ["esperar","esperar um texto aparecer"],["ler","ler as últimas linhas"],
+          ["fechar","fechar o terminal"]].map(function(o){
+           return '<option value="'+o[0]+'"'+((n.acao||"criar")===o[0]?" selected":"")+'>'+o[1]+'</option>';}).join("")+
          '</select>'+
-         '<label>Nome do terminal/agente</label><input id="gvNomeT" value="'+esc(n.nome||"")+'" placeholder="ex: Executor 1">'+
-         '<label>Texto (pra ask/notify)</label><textarea id="gvTextoT">'+esc(n.texto||"")+'</textarea>'+
-         '<label>Pasta (pra recruit)</label><input id="gvDirT" value="'+esc(n.dir||"")+'" placeholder="~/projeto">';
+         '<label>Nome do terminal</label><input id="gvNomeT" value="'+esc(n.nome||"")+'" placeholder="ex: Robô 1">'+
+         '<label>Texto (digitar / esperar)</label><textarea id="gvTextoT">'+esc(n.texto||"")+'</textarea>'+
+         '<label>Pasta (pra criar)</label><input id="gvDirT" value="'+esc(n.pasta||"")+'" placeholder="~/projeto">';
   } else if(n.tipo==="app"){
     h += '<label>Aplicativo</label><input id="gvApp" value="'+esc(n.app||"")+'" placeholder="ex: Finder, UpSeller">'+
          '<label>A tarefa (o agente usa olhos e mãos via ~/maos)</label><textarea id="gvPedidoApp">'+esc(n.pedido||"")+'</textarea>';
@@ -670,7 +671,7 @@ function abrirGaveta(id){
     if(v("#gvAcao")!==undefined)    n.acao = v("#gvAcao");
     if(v("#gvNomeT")!==undefined)   n.nome = v("#gvNomeT").trim();
     if(v("#gvTextoT")!==undefined)  n.texto = v("#gvTextoT");
-    if(v("#gvDirT")!==undefined)    n.dir = v("#gvDirT").trim()||undefined;
+    if(v("#gvDirT")!==undefined)    n.pasta = v("#gvDirT").trim()||undefined;
     if(v("#gvApp")!==undefined)     n.app = v("#gvApp").trim();
     if(v("#gvPedidoApp")!==undefined) n.pedido = v("#gvPedidoApp");
     if(v("#gvUrl")!==undefined)     n.url = v("#gvUrl").trim();
@@ -957,9 +958,16 @@ function montarTerminal(info){
 }
 function carregarTerminais(){
   fetch(API+"/api/term/lista").then(function(r){return r.json();}).then(function(d){
-    (d.terminais||[]).forEach(montarTerminal);
-  });
+    var vivos = {};
+    (d.terminais||[]).forEach(function(t){ vivos[t.id]=true; montarTerminal(t); });
+    // terminal que o servidor não conhece mais sai da tela
+    Object.keys(TERMS_UI).forEach(function(id){
+      if(!vivos[id]){ TERMS_UI[id].card.remove(); delete TERMS_UI[id]; }
+    });
+  }).catch(function(){});
 }
+// o FLUXO cria terminais — o canvas fica de olho e eles APARECEM sozinhos
+setInterval(carregarTerminais, 3000);
 $("#btTerm").onclick = function(){
   var nome = prompt("Nome do terminal:", "Executor "+(Object.keys(TERMS_UI).length+1));
   if(nome===null) return;
