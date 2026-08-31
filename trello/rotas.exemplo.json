@@ -65,68 +65,139 @@
   },
   "rotas": [
     {
-      "caminho": "/Users/SEU_USUARIO/projeto-a",
+      "caminho": "/Users/SEU_USUARIO/CAMINHO/mercador",
       "tipo": "obra",
       "area": "A",
-      "rotulo": "Frente A"
+      "rotulo": "MERCADOR · Mercado Livre"
     },
     {
-      "caminho": "/Users/SEU_USUARIO/projeto-b",
+      "caminho": "/Users/SEU_USUARIO/CAMINHO/shopee",
       "tipo": "obra",
       "area": "B",
-      "rotulo": "Frente B"
+      "rotulo": "Shopee · Upseller"
     },
     {
-      "caminho": "/Users/SEU_USUARIO/Desktop/CLIENTE-X",
+      "caminho": "/Users/SEU_USUARIO/CAMINHO/gf-cortes",
+      "tipo": "obra",
+      "area": "C",
+      "rotulo": "GF Cortes"
+    },
+    {
+      "caminho": "/Users/SEU_USUARIO/CAMINHO/verso",
+      "tipo": "obra",
+      "area": "D",
+      "rotulo": "VERSO · EcommerceVerso"
+    },
+    {
+      "caminho": "/Users/SEU_USUARIO/CAMINHO/tikebum",
       "tipo": "cliente",
       "area": "E",
-      "rotulo": "Cliente X"
+      "rotulo": "Tikebum"
     },
     {
-      "caminho": "/Users/SEU_USUARIO/trinity",
+      "caminho": "/Users/SEU_USUARIO/CAMINHO/syc",
+      "tipo": "cliente",
+      "area": "G",
+      "rotulo": "Saturi · Joãozinho (SYC)"
+    },
+    {
+      "caminho": "/Users/SEU_USUARIO/CAMINHO/trinity",
       "tipo": "obra",
       "area": "G",
-      "rotulo": "Infra · o Quadro"
+      "rotulo": "Infra · A Ponte e o Quadro"
     },
     {
-      "caminho": "/Users/SEU_USUARIO/.claude",
+      "caminho": "/Users/SEU_USUARIO/CAMINHO/quadro",
       "tipo": "obra",
       "area": "G",
-      "rotulo": "Infra · Claude Code"
+      "rotulo": "Infra · Quadro da Obra"
     },
     {
-      "caminho": "/Users/SEU_USUARIO/Desktop/BANCADA",
+      "caminho": "/Users/SEU_USUARIO/CAMINHO/bancada",
       "tipo": "bancada",
       "area": null,
-      "rotulo": "Bancada"
-    },
-    {
-      "caminho": "/Users/SEU_USUARIO/Downloads",
-      "tipo": "bancada",
-      "area": null,
-      "rotulo": "Bancada · baixados"
+      "rotulo": "Bancada · experimentos"
     }
   ],
   "palavras_chave": {
     "_leia": "Só entra em campo quando NENHUM arquivo casou (ex.: turno só de comando). Casa no título, sem acento e em minúscula.",
     "obra": {
       "A": [
-        "palavra da frente a"
+        "mercado livre",
+        "mercadolivre",
+        "anuncio",
+        "anuncios",
+        "upseller",
+        "mercador",
+        "soleira"
       ],
       "B": [
-        "palavra da frente b"
+        "shopee",
+        "tiktok shop",
+        "temu",
+        "shein"
+      ],
+      "C": [
+        "gf cortes",
+        "cortes-tracker"
+      ],
+      "D": [
+        "verso",
+        "ecommerceverso",
+        "prompt-livro",
+        "alfaiate"
+      ],
+      "E": [
+        "tikebum"
+      ],
+      "F": [
+        "zero a venda",
+        "zero-venda",
+        "forte & leve",
+        "forte e leve"
       ],
       "G": [
         "supabase",
         "hook",
         "daemon",
+        "launchagent",
         "trello",
+        "quadro",
+        "ponte",
+        "trinity",
         "mcp"
+      ],
+      "H": [
+        "entrega steve",
+        "davi"
+      ],
+      "I": [
+        "cara do steve",
+        "proposta",
+        "orcamento",
+        "contrato",
+        "cliente novo"
       ]
     },
     "cliente": {
-      "Cliente X": [
-        "cliente x"
+      "Tikebum": [
+        "tikebum"
+      ],
+      "Saturi · Joãozinho (SYC)": [
+        "saturi",
+        "joaozinho",
+        "syc",
+        "nfc-e",
+        "nfe"
+      ],
+      "Mário · Amazon": [
+        "mario",
+        "amazon"
+      ],
+      "Vitim": [
+        "vitim",
+        "vitinho",
+        "arietto"
       ]
     },
     "bancada": [
@@ -156,5 +227,6 @@
     "ligado": true,
     "minutos_minimos": 5,
     "minimo_de_buscas": 2
-  }
+  },
+  "rotas_leia": "⚠️ Os CAMINHOS aqui são de mentira — troque pelos seus. Os NOMES das frentes e clientes são os reais da casa, de propósito: é assim que Pyerri e Davi se acham."
 }

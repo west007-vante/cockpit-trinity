@@ -10,7 +10,7 @@ Quatro camadas, da mais burra pra mais esperta. A burra é a que mais acerta.
      Cada arquivo escrito/editado é casado contra as rotas de rotas.json.
      Vence a rota com mais arquivos. Determinístico: mesma entrada, mesma saída.
      (Usar os ARQUIVOS e não a pasta é obrigatório — o Pyerri trabalha sempre da
-     home, então o cwd é /Users/pyerri em 100% das sessões e não classifica nada.)
+     home, então o cwd é a própria home em 100% das sessões e não classifica nada.)
 
   3. PALAVRA-CHAVE NO TÍTULO
      Só entra quando nenhum arquivo casou — turno só de comando, por exemplo.
@@ -164,17 +164,34 @@ def e_bancada_de_pesquisa(ferramentas=None, duracao_s=0, escreveu=False, rotas=N
 
 if __name__ == "__main__":
     # Bateria de prova — roda sem rede, sem Trello, sem nada.
-    R = carregar_rotas()
+    #
+    # A tabela abaixo é DO TESTE, não a do usuário: um teste que depende do
+    # rotas.json de quem instalou passa numa máquina e falha na outra. Aqui a
+    # entrada é fixa, então a saída também é.
+    R = {
+        "rotas": [
+            {"caminho": "/casa/projeto-alfa",       "tipo": "obra",    "area": "A", "rotulo": "Frente Alfa"},
+            {"caminho": "/casa/cliente-beta",       "tipo": "cliente", "area": "E", "rotulo": "Cliente Beta"},
+            {"caminho": "/casa/infra",              "tipo": "obra",    "area": "G", "rotulo": "Infra"},
+            {"caminho": "/casa/experimentos",       "tipo": "bancada", "area": None, "rotulo": "Bancada"},
+        ],
+        "palavras_chave": {
+            "obra":    {"A": ["frente alfa", "alfa"], "G": ["trello", "daemon"]},
+            "cliente": {"Cliente Beta": ["beta"]},
+            "bancada": ["curiosidade", "como funciona", "estudo"],
+        },
+        "ignorar_arquivos": {"prefixos": ["/private/tmp/claude-", "/tmp/"]},
+        "bancada_por_pesquisa": {"ligado": True, "minutos_minimos": 5, "minimo_de_buscas": 2},
+    }
     casos = [
-        (["/Users/pyerri/mercador/lotes/x.json"], "publicar lote", "obra", "A"),
-        (["/Users/pyerri/Desktop/Tikebum/app.tsx"], "ajustar tela", "cliente", None),
-        (["/Users/pyerri/trinity/trello/roteador.py",
-          "/Users/pyerri/trinity/trello/gcal.py"], "montar o quadro", "obra", "G"),
-        (["/Users/pyerri/comfyui/wf.json"], "gerar imagem", "bancada", None),
-        ([], "migrar anuncios do mercado livre", "obra", "A"),
-        ([], "o Joaozinho pediu a NFC-e", "cliente", None),
+        (["/casa/projeto-alfa/lote.json"], "publicar lote", "obra", "A"),
+        (["/casa/cliente-beta/app.tsx"], "ajustar tela", "cliente", None),
+        (["/casa/infra/roteador.py", "/casa/infra/gcal.py"], "montar o quadro", "obra", "G"),
+        (["/casa/experimentos/wf.json"], "gerar imagem", "bancada", None),
+        ([], "migrar tudo da frente alfa", "obra", "A"),
+        ([], "o beta pediu mais uma tela", "cliente", None),
         ([], "so uma curiosidade sobre isso", "bancada", None),
-        (["/Users/pyerri/Music/x.mp3"], "mexer em som", "entrada", None),
+        (["/casa/musica/x.mp3"], "mexer em som", "entrada", None),
         # ruído de máquina não pode decidir rota nenhuma:
         (["/private/tmp/claude-501/x/scratchpad/a.py"], "rascunho", "entrada", None),
         ([], "", "entrada", None),

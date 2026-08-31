@@ -101,8 +101,8 @@ def trocar_dados(desc, novos):
 if __name__ == "__main__":
     d = {"id": "A1", "area": "A", "faixa": "semana", "status": "voce",
          "u": 5, "i": 5, "e": 2, "peso": 10, "dep": ["A2"], "origem": "quadro",
-         "tipo": "obra", "fonte": "~/mercador/LIVRO-DE-OBRA.md linha 62"}
-    desc = montar_desc(d, "Gate humano aberto desde 20/08. Nada foi ao ar.")
+         "tipo": "obra", "fonte": "LIVRO-DE-OBRA.md linha 62"}
+    desc = montar_desc(d, "Gate humano aberto. Nada foi ao ar ainda.")
     print(desc)
     print("\n--- volta ---")
     volta = ler_desc(desc)

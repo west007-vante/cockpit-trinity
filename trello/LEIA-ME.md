@@ -124,8 +124,8 @@ Quatro camadas. A mais burra é a que mais acerta.
 
 1. **Mexeu ou não mexeu** — no hook. Conversa fiada morre aí. *(sua lei)*
 2. **Os arquivos tocados decidem** — casa o caminho contra `rotas.json`.
-   Usa os **arquivos**, não a pasta: você trabalha sempre da home, então o `cwd`
-   é `/Users/pyerri` em 100% das sessões e não classificaria nada.
+   Usa os **arquivos**, não a pasta: quem trabalha sempre a partir da home tem
+   o `cwd` igual em 100% das sessões — a pasta não classificaria nada.
 3. **Palavra-chave no título** — só quando nenhum arquivo casou.
 4. **Não casou → 📥 Entrada**, com o motivo escrito no card. Nunca chuta.
 
