@@ -98,14 +98,23 @@ $("#btMagic").onclick = async () => {
   const email = $("#email").value.trim();
   if (!email) return msg("#msgLogin","erro","escreva o e-mail primeiro.");
   $("#btMagic").disabled = true;
-  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: location.href }});
+  const paginaLimpa = location.origin + location.pathname;   // sem query, sem hash — senão a URL acumula a cada volta
+  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: paginaLimpa }});
   $("#btMagic").disabled = false;
   if (error) return msg("#msgLogin","erro","o Supabase recusou: "+error.message);
   msg("#msgLogin","ok","link mandado pra "+email+". Olhe a caixa (e o spam) e clique nele.");
 };
 $("#btGoogle").onclick = async () => {
-  const { error } = await sb.auth.signInWithOAuth({ provider:"google", options:{ redirectTo: location.href }});
-  if (error) msg("#msgLogin","erro","Google ainda não configurado no projeto — use o link mágico. ("+error.message+")");
+  // preflight: o Supabase responde 400 se o provider não está ligado —
+  // melhor uma mensagem aqui do que a página de JSON cru na sua cara
+  try {
+    const r = await fetch(URL_SB + "/auth/v1/authorize?provider=google&redirect_to=" +
+      encodeURIComponent(location.origin + location.pathname), { redirect: "manual" });
+    if (r.status === 400) {
+      return msg("#msgLogin","aviso","O Google ainda não foi ligado no projeto (console do Supabase → Auth → Providers). Use o link mágico — funciona agora.");
+    }
+  } catch(e) { /* opaque redirect = provider ok — segue */ }
+  await sb.auth.signInWithOAuth({ provider:"google", options:{ redirectTo: location.origin + location.pathname }});
 };
 
 async function entrar(){
