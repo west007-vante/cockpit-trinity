@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A ESTEIRA · entrada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#E4E5DF; --panel:#F5F6F2; --panel-2:#E9EAE4; --ink:#191C19; --ink-2:#565C56;
+  --ink-3:#828981; --rule:#C6C8C0; --acao:#26586B; --ok:#2C6A4E; --erro:#A5321D; --aviso:#96650F;
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#131518; --panel:#1D2024; --panel-2:#24282D; --ink:#E9EAE4; --ink-2:#9BA29C;
+  --ink-3:#767D78; --rule:#333940; --acao:#63AAC2; --ok:#62B58A; --erro:#E5775F; --aviso:#D9A33F;
+}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--paper);color:var(--ink);
+  font-family:"Archivo","Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.5;
+  display:grid;place-items:center;padding:2rem 1rem;}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.caixa{width:min(30rem,100%);background:var(--panel);border:1px solid var(--rule);
+  border-radius:9px;padding:2rem;box-shadow:0 1px 2px rgba(0,0,0,.08),0 14px 40px -24px rgba(0,0,0,.6)}
+h1{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;margin:0}
+h1 small{display:block;font-family:"JetBrains Mono",monospace;font-weight:400;font-size:.6rem;
+  letter-spacing:.16em;color:var(--ink-3);text-transform:uppercase;margin-top:.3rem}
+p{color:var(--ink-2)}
+label{display:block;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-3);margin:1.1rem 0 .35rem}
+input{width:100%;padding:.6rem .7rem;background:var(--paper);border:1px solid var(--rule);
+  border-radius:6px;color:var(--ink);font-family:inherit;font-size:.95rem}
+button{width:100%;margin-top:1rem;padding:.65rem;border:0;border-radius:6px;cursor:pointer;
+  background:var(--acao);color:#fff;font-weight:700;font-family:inherit;font-size:.95rem}
+button.linha{background:none;border:1px solid var(--rule);color:var(--ink);font-weight:600}
+button:disabled{opacity:.5;cursor:wait}
+.msg{margin-top:1rem;padding:.7rem .9rem;border-radius:6px;border-left:3px solid;font-size:.9rem;display:none}
+.msg.on{display:block}
+.msg.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,transparent)}
+.msg.erro{border-color:var(--erro);background:color-mix(in srgb,var(--erro) 10%,transparent)}
+.msg.aviso{border-color:var(--aviso);background:color-mix(in srgb,var(--aviso) 10%,transparent)}
+.token{margin-top:1rem;padding:.9rem;background:var(--paper);border:1.5px dashed var(--aviso);
+  border-radius:6px;font-family:"JetBrains Mono",monospace;font-size:.78rem;word-break:break-all}
+.cred{display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px solid var(--rule);font-size:.88rem}
+.cred:last-child{border-bottom:0}
+.cred b{flex:1;font-weight:600}
+.cred button{width:auto;margin:0;padding:.3rem .7rem;font-size:.75rem;background:none;
+  border:1px solid var(--erro);color:var(--erro)}
+.oculto{display:none}
+pre{background:var(--panel-2);border:1px solid var(--rule);border-radius:6px;padding:.8rem;
+  font-family:"JetBrains Mono",monospace;font-size:.72rem;overflow-x:auto;line-height:1.7}
+.selo{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:.62rem;
+  letter-spacing:.1em;text-transform:uppercase;padding:.2rem .6rem;border-radius:99px;
+  border:1px solid var(--ok);color:var(--ok);margin-left:.5rem}
+</style></head><body>
+
+<div class="caixa">
+  <h1>A ESTEIRA<small>plataforma fechada · Pyerri × Davi × João</small></h1>
+
+  <!-- ── passo 1: entrar ── -->
+  <div id="tela-login">
+    <p>Entre com o <b>seu e-mail de sócio</b>. Chega um link mágico na caixa —
+       clique nele e volte pra cá. E-mail fora da lista dos três não entra.</p>
+    <label>e-mail</label>
+    <input id="email" type="email" placeholder="voce@gmail.com" autocomplete="email">
+    <button id="btMagic">mandar o link mágico</button>
+    <button id="btGoogle" class="linha">entrar com Google</button>
+    <div id="msgLogin" class="msg"></div>
+  </div>
+
+  <!-- ── passo 2: dentro ── -->
+  <div id="tela-dentro" class="oculto">
+    <p id="quem"></p>
+    <label>pra que é a credencial</label>
+    <input id="rotulo" placeholder="ex: macbook de casa" value="minha máquina">
+    <button id="btGerar">gerar credencial desta máquina</button>
+    <div id="tokenBox" class="oculto">
+      <div class="msg aviso on">⚠️ Aparece <b>uma vez só</b>. Copie agora — só o hash fica no banco.</div>
+      <div class="token" id="tokenTexto"></div>
+      <p style="font-size:.85rem">Cole na sua máquina, no arquivo <span class="mono">~/.steve/esteira.env</span>:</p>
+      <pre id="receita"></pre>
+    </div>
+    <label style="margin-top:1.6rem">credenciais desta conta</label>
+    <div id="listaCreds"></div>
+    <button id="btSair" class="linha" style="margin-top:1.4rem">sair</button>
+    <div id="msgDentro" class="msg"></div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+const URL_SB = "https://rlrxeegnwjsmxwzoytiz.supabase.co";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJscnhlZWdud2pzbXh3em95dGl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzOTcxMDEsImV4cCI6MjA4OTk3MzEwMX0.jWsEO2sx5Iu5NxIQt5TXPCKzqsBqRngVcE5aBVFxWgw";
+const sb = createClient(URL_SB, ANON);
+const $ = s => document.querySelector(s);
+const msg = (el, tipo, texto) => { const e=$(el); e.className="msg on "+tipo; e.textContent=texto; };
+
+$("#btMagic").onclick = async () => {
+  const email = $("#email").value.trim();
+  if (!email) return msg("#msgLogin","erro","escreva o e-mail primeiro.");
+  $("#btMagic").disabled = true;
+  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: location.href }});
+  $("#btMagic").disabled = false;
+  if (error) return msg("#msgLogin","erro","o Supabase recusou: "+error.message);
+  msg("#msgLogin","ok","link mandado pra "+email+". Olhe a caixa (e o spam) e clique nele.");
+};
+$("#btGoogle").onclick = async () => {
+  const { error } = await sb.auth.signInWithOAuth({ provider:"google", options:{ redirectTo: location.href }});
+  if (error) msg("#msgLogin","erro","Google ainda não configurado no projeto — use o link mágico. ("+error.message+")");
+};
+
+async function entrar(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+  const { data, error } = await sb.rpc("esteira_entrar");
+  if (error) {
+    msg("#msgLogin","erro", error.message.includes("sócios")
+      ? "Este e-mail não é de nenhum dos três sócios. A porta é fechada."
+      : "não deu: "+error.message);
+    await sb.auth.signOut(); return;
+  }
+  $("#tela-login").classList.add("oculto");
+  $("#tela-dentro").classList.remove("oculto");
+  $("#quem").innerHTML = "Você é <b>"+data.nome+"</b><span class='selo'>"+data.dono+"</span>";
+  listar();
+}
+async function listar(){
+  const { data, error } = await sb.rpc("esteira_minhas_credenciais");
+  if (error) return;
+  $("#listaCreds").innerHTML = (data||[]).map(c =>
+    `<div class="cred"><b>${c.rotulo}</b>
+     <span class="mono" style="font-size:.7rem;color:var(--ink-3)">${(c.criada_em||"").slice(0,10)}</span>
+     ${c.revogada ? '<span style="color:var(--erro);font-size:.75rem">revogada</span>'
+                  : `<button data-id="${c.id}">revogar</button>`}</div>`).join("")
+    || "<p style='font-size:.85rem'>nenhuma ainda.</p>";
+  $("#listaCreds").querySelectorAll("button").forEach(b => b.onclick = async () => {
+    if (!confirm("Revogar? A máquina que usa essa credencial para de acessar NA HORA.")) return;
+    await sb.rpc("esteira_revogar_credencial", { p_id: Number(b.dataset.id) });
+    listar();
+  });
+}
+$("#btGerar").onclick = async () => {
+  $("#btGerar").disabled = true;
+  const { data, error } = await sb.rpc("esteira_gerar_credencial", { p_rotulo: $("#rotulo").value });
+  $("#btGerar").disabled = false;
+  if (error) return msg("#msgDentro","erro","não deu: "+error.message);
+  $("#tokenBox").classList.remove("oculto");
+  $("#tokenTexto").textContent = data;
+  $("#receita").textContent =
+`ESTEIRA_SUPABASE_URL=${URL_SB}
+ESTEIRA_SUPABASE_ANON=${ANON}
+ESTEIRA_CREDENCIAL=${data}
+ESTEIRA_DONO=(seu slug: steve, rico ou joao)`;
+  listar();
+};
+$("#btSair").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+entrar();
+sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_IN") entrar(); });
+</script>
+</body></html>
