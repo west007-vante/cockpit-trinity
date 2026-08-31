@@ -6,6 +6,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
 <style>
 /* Paleta copiada fiel do canvas-obra.html — é o design que o dono aprovou. */
 :root{
@@ -199,6 +202,31 @@ select.sel{background:var(--panel-2);border:1px solid var(--rule);border-radius:
   background:color-mix(in srgb,var(--panel) 88%,transparent);
   padding:5px 9px;border-radius:5px;border:1px solid var(--rule-soft);
 }
+/* ── cards VIVOS no canvas: terminal e portal (a cara do Maestri) ─── */
+.vivo-card{
+  position:absolute;z-index:6;display:flex;flex-direction:column;
+  background:#0E1116;border:1px solid var(--rule);border-radius:8px;
+  box-shadow:var(--shadow-lift);overflow:hidden;
+  resize:both;min-width:360px;min-height:220px;width:560px;height:340px;
+}
+.vivo-card.sel-vivo{border-color:var(--semana);box-shadow:0 0 0 2px var(--semana),var(--shadow-lift);}
+.vivo-cab{
+  display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:grab;
+  background:var(--panel);border-bottom:1px solid var(--rule);user-select:none;flex:none;
+}
+.vivo-cab b{font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vivo-cab .tag{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);}
+.vivo-cab button{background:none;border:0;color:var(--ink-3);cursor:pointer;font-size:13px;padding:2px 5px;}
+.vivo-cab button:hover{color:var(--erro);}
+.term-corpo{flex:1;min-height:0;padding:4px 2px 2px 6px;background:#0E1116;}
+.term-corpo .xterm{height:100%;}
+.portal-url{display:flex;gap:6px;padding:6px 8px;background:var(--panel);border-bottom:1px solid var(--rule);flex:none;}
+.portal-url input{flex:1;padding:5px 8px;background:var(--paper);border:1px solid var(--rule);
+  border-radius:5px;color:var(--ink);font-family:"JetBrains Mono",monospace;font-size:11px;}
+.portal-corpo{flex:1;min-height:0;background:#fff;}
+.portal-corpo iframe{width:100%;height:100%;border:0;}
+
 :focus-visible{outline:2px solid var(--semana);outline-offset:2px;}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 </style>
@@ -216,6 +244,8 @@ select.sel{background:var(--panel-2);border:1px solid var(--rule);border-radius:
   <button class="btn valendo" id="btValendo" title="só funciona em fluxo que você soltou">▶ valendo</button>
   <span id="seloModo" class="selo ensaio">ensaio</span>
   <div style="flex:1"></div>
+  <button class="btn" id="btTerm" title="abre um shell DE VERDADE desta máquina, aqui no canvas">🖥️ + terminal</button>
+  <button class="btn" id="btPortal" title="abre um navegador embutido no canvas">🌐 + portal</button>
   <button class="btn" id="btCompart" title="sobe este fluxo pro banco — os três enxergam">⇡ compartilhar</button>
   <button class="btn" id="btPuxar" title="baixa um fluxo compartilhado (chega em ensaio)">⇣ do banco</button>
   <button class="btn" id="btAjuste" title="soltar ou prender este fluxo">🔒 soltar…</button>
@@ -244,6 +274,7 @@ select.sel{background:var(--panel-2);border:1px solid var(--rule);border-radius:
   <div id="mundo">
     <svg id="fios"></svg>
     <div id="nos"></div>
+    <div id="vivos"></div>
   </div>
 </div>
 
@@ -845,9 +876,141 @@ $("#btPuxar").onclick = function(){
 };
 $("#selFluxo").addEventListener("change", function(){ abrirFluxo(this.value); });
 
+/* ── TERMINAIS VIVOS + PORTAIS — a cara do Maestri no nosso canvas ── */
+var utf8b64 = function(t){ return btoa(String.fromCharCode.apply(null, new TextEncoder().encode(t))); };
+var b64u8 = function(b){ var s2=atob(b), u=new Uint8Array(s2.length);
+  for(var i=0;i<s2.length;i++) u[i]=s2.charCodeAt(i); return u; };
+
+function cardVivo(tipo, x, y){
+  var d = document.createElement("div");
+  d.className = "vivo-card";
+  d.style.left = (x||220)+"px"; d.style.top = (y||160)+"px";
+  d.addEventListener("mousedown", function(ev){ ev.stopPropagation();
+    $$(".vivo-card").forEach(function(e){e.classList.remove("sel-vivo");});
+    d.classList.add("sel-vivo"); });
+  $("#vivos").appendChild(d);   // casa própria: o render() limpa #nos, não aqui
+  return d;
+}
+function arrastavel(card, cab, aoSoltar){
+  cab.addEventListener("mousedown", function(ev){
+    if(ev.target.tagName==="BUTTON"||ev.target.tagName==="INPUT") return;
+    ev.preventDefault(); ev.stopPropagation();
+    var m0 = paraMundo(ev), x0 = parseInt(card.style.left), y0 = parseInt(card.style.top);
+    function mv(e2){ var m = paraMundo(e2);
+      card.style.left = Math.round(x0 + m.x - m0.x)+"px";
+      card.style.top  = Math.round(y0 + m.y - m0.y)+"px"; }
+    function up(){ window.removeEventListener("mousemove", mv);
+      window.removeEventListener("mouseup", up);
+      if(aoSoltar) aoSoltar(parseInt(card.style.left), parseInt(card.style.top)); }
+    window.addEventListener("mousemove", mv); window.addEventListener("mouseup", up);
+  });
+}
+
+var TERMS_UI = {};
+function montarTerminal(info){
+  if(TERMS_UI[info.id]) return;
+  var card = cardVivo("term", info.x, info.y);
+  card.innerHTML = '<div class="vivo-cab"><span class="tag">🖥️ shell real</span><b></b>'+
+    '<button class="fechar" title="fechar o shell">✕</button></div>'+
+    '<div class="term-corpo"></div>';
+  card.querySelector("b").textContent = info.nome || info.id;
+  var term = new Terminal({fontSize:12.5, fontFamily:'"JetBrains Mono",monospace',
+    cursorBlink:true, scrollback:4000, theme:{background:"#0E1116", foreground:"#D6DEE7",
+    cursor:"#63AAC2", selectionBackground:"#26586B66"}});
+  var fit = new FitAddon.FitAddon(); term.loadAddon(fit);
+  term.open(card.querySelector(".term-corpo"));
+  setTimeout(function(){ fit.fit(); avisaTamanho(); }, 60);
+
+  var desde = 0, vivo = true;
+  function poll(){
+    if(!vivo) return;
+    fetch(API+"/api/term/saida/"+info.id+"?desde="+desde).then(function(r){
+      if(r.status===404){ vivo=false; term.write("\r\n[terminal fechado]\r\n"); return null; }
+      return r.json();
+    }).then(function(d){
+      if(!d) return;
+      if(d.dados) { term.write(b64u8(d.dados)); }
+      desde = d.desde;
+      if(!d.vivo){ vivo=false; term.write("\r\n[o shell terminou]\r\n"); return; }
+      setTimeout(poll, 150);
+    }).catch(function(){ setTimeout(poll, 1200); });
+  }
+  poll();
+  term.onData(function(dados){
+    fetch(API+"/api/term/entrada/"+info.id, {method:"POST",
+      body:JSON.stringify({b64:utf8b64(dados)})});
+  });
+  function avisaTamanho(){
+    fetch(API+"/api/term/tamanho/"+info.id, {method:"POST",
+      body:JSON.stringify({cols:term.cols, rows:term.rows})});
+  }
+  new ResizeObserver(function(){ try{ fit.fit(); avisaTamanho(); }catch(e){} }).observe(card);
+  arrastavel(card, card.querySelector(".vivo-cab"), function(x,y){
+    fetch(API+"/api/term/mover/"+info.id, {method:"POST", body:JSON.stringify({x:x,y:y})});
+  });
+  card.querySelector(".fechar").onclick = function(){
+    if(!confirm("Fechar este shell? O processo morre."))return;
+    fetch(API+"/api/term/fechar/"+info.id, {method:"POST", body:"{}"});
+    vivo=false; card.remove(); delete TERMS_UI[info.id];
+  };
+  TERMS_UI[info.id] = {card:card, term:term};
+}
+function carregarTerminais(){
+  fetch(API+"/api/term/lista").then(function(r){return r.json();}).then(function(d){
+    (d.terminais||[]).forEach(montarTerminal);
+  });
+}
+$("#btTerm").onclick = function(){
+  var nome = prompt("Nome do terminal:", "Executor "+(Object.keys(TERMS_UI).length+1));
+  if(nome===null) return;
+  var r = $("#palco").getBoundingClientRect();
+  var m = {x:(r.width/2-280-panX)/zoom, y:(r.height/2-170-panY)/zoom};
+  fetch(API+"/api/term/criar", {method:"POST",
+    body:JSON.stringify({nome:nome||"terminal", pasta:"~", x:Math.round(m.x), y:Math.round(m.y)})})
+    .then(function(r2){return r2.json();}).then(montarTerminal);
+};
+
+/* portais: navegador embutido; persistem no localStorage */
+function urlPortal(u){
+  u = (u||"").trim(); if(!u) return "https://example.com";
+  if(!/^https?:/.test(u)) u = "https://"+u;
+  var m = u.match(/youtube\.com\/watch\?v=([\w-]+)/);
+  if(m) u = "https://www.youtube.com/embed/"+m[1];      // o watch bloqueia iframe; o embed não
+  return u;
+}
+function portaisSalvar(){
+  var lista = $$(".portal-card").map(function(c){
+    return {url:c.querySelector("input").value, x:parseInt(c.style.left), y:parseInt(c.style.top)};});
+  localStorage.setItem("esteira-portais", JSON.stringify(lista));
+}
+function montarPortal(cfg){
+  var card = cardVivo("portal", cfg.x, cfg.y);
+  card.classList.add("portal-card");
+  card.innerHTML = '<div class="vivo-cab"><span class="tag">🌐 portal</span><b>navegador</b>'+
+    '<button class="fechar">✕</button></div>'+
+    '<div class="portal-url"><input placeholder="youtube.com/watch?v=… ou qualquer https://"><button class="btn ir">ir</button></div>'+
+    '<div class="portal-corpo"><iframe sandbox="allow-scripts allow-same-origin allow-forms allow-presentation" referrerpolicy="no-referrer"></iframe></div>';
+  var inp = card.querySelector("input"), ifr = card.querySelector("iframe");
+  function ir(){ ifr.src = urlPortal(inp.value); inp.value = ifr.src; portaisSalvar(); }
+  card.querySelector(".ir").onclick = ir;
+  inp.addEventListener("keydown", function(e){ if(e.key==="Enter") ir(); });
+  if(cfg.url){ inp.value = cfg.url; ifr.src = urlPortal(cfg.url); }
+  arrastavel(card, card.querySelector(".vivo-cab"), portaisSalvar);
+  card.querySelector(".fechar").onclick = function(){ card.remove(); portaisSalvar(); };
+}
+function carregarPortais(){
+  try{ (JSON.parse(localStorage.getItem("esteira-portais")||"[]")).forEach(montarPortal); }catch(e){}
+}
+$("#btPortal").onclick = function(){
+  var r = $("#palco").getBoundingClientRect();
+  montarPortal({x:(r.width/2-180-panX)/zoom, y:(r.height/2-40-panY)/zoom, url:""});
+};
+
 /* ── começo ───────────────────────────────────────────── */
 aplicarCamera();
 carregarCartoes();
+carregarTerminais();
+carregarPortais();
 carregarFluxos().then(function(d){
   var f = (d.fluxos||[])[0];
   if(f) abrirFluxo(f.arquivo); else render();

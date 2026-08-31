@@ -19,12 +19,13 @@ import sys
 import threading
 import time
 import urllib.parse
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import guarda   # noqa: E402
 import motor    # noqa: E402
-import gatilhos  # noqa: E402
+import gatilhos   # noqa: E402
+import terminais  # noqa: E402
 
 CASA = os.path.dirname(os.path.abspath(__file__))
 FLUXOS = os.path.join(CASA, "fluxos")
@@ -160,6 +161,14 @@ class Mao(BaseHTTPRequestHandler):
             return self._responder({"modelos": [
                 {"id": k, **v} for k, v in reg.items()],
                 "local_no_ar": _m._local_no_ar()})
+        if p == "/api/term/lista":
+            return self._responder({"terminais": terminais.lista()})
+        if p.startswith("/api/term/saida/"):
+            tid = p[16:]
+            r = terminais.saida(tid, (q.get("desde") or ["0"])[0])
+            if r is None:
+                return self._responder({"erro": "terminal não existe"}, 404)
+            return self._responder(r)
         if p == "/api/estado":
             return self._responder({"panico": guarda.panico_ligado(),
                                     "rodando": [k for k, v in _rodando.items() if v["viva"]],
@@ -256,6 +265,24 @@ class Mao(BaseHTTPRequestHandler):
             except Exception as e:
                 return self._responder({"erro": str(e)}, 502)
 
+        if p == "/api/term/criar":
+            info = terminais.criar(corpo.get("nome") or "terminal",
+                                   corpo.get("pasta") or "~",
+                                   int(corpo.get("x") or 200), int(corpo.get("y") or 200))
+            return self._responder(info)
+        if p.startswith("/api/term/entrada/"):
+            ok = terminais.entrada(p[18:], corpo.get("b64") or "")
+            return self._responder({"ok": ok})
+        if p.startswith("/api/term/tamanho/"):
+            ok = terminais.tamanho(p[18:], corpo.get("cols") or 80, corpo.get("rows") or 24)
+            return self._responder({"ok": ok})
+        if p.startswith("/api/term/mover/"):
+            ok = terminais.mover(p[16:], corpo.get("x") or 0, corpo.get("y") or 0,
+                                 corpo.get("nome"))
+            return self._responder({"ok": ok})
+        if p.startswith("/api/term/fechar/"):
+            ok = terminais.fechar(p[17:])
+            return self._responder({"ok": ok})
         if p == "/api/panico":
             if corpo.get("puxar"):
                 guarda.puxar_freio(corpo.get("motivo", "pedido pelo canvas"))
@@ -273,7 +300,9 @@ def main():
     porta = PORTA_PADRAO
     if "--porta" in sys.argv:
         porta = int(sys.argv[sys.argv.index("--porta") + 1])
-    srv = HTTPServer(("127.0.0.1", porta), Mao)   # só a própria máquina alcança
+    # Threading é obrigatório com terminais vivos: cada card faz polling — num
+    # servidor de fila única, um terminal penduraria todos os outros e a API.
+    srv = ThreadingHTTPServer(("127.0.0.1", porta), Mao)   # só a própria máquina alcança
     print(f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║   A ESTEIRA                                                  ║
