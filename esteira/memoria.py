@@ -34,7 +34,20 @@ def _caminho(mem, pasta_execucao=None):
 
 
 def carregar(mem, pasta_execucao=None):
-    """O que o agente lembra. Vazio se nunca lembrou de nada — sem erro."""
+    """O que o agente lembra. Vazio se nunca lembrou de nada — sem erro.
+    Tipo COMUM: o banco (a memória dos TRÊS) vem primeiro; o arquivo local é
+    o fallback de quando a rede falta."""
+    if (mem or {}).get("tipo") == "comum":
+        try:
+            import banco
+            ms = banco.memoria_ler(15)
+            if ms:
+                corpo = "\n".join(
+                    f"## {m['criado_em'][:16]} · [{m['autor']}] {m['titulo']}\n{m['corpo']}"
+                    for m in reversed(ms))
+                return corpo[-TETO_LEITURA:]
+        except Exception:
+            pass
     p = _caminho(mem, pasta_execucao)
     try:
         with open(p, encoding="utf-8") as f:
@@ -46,13 +59,21 @@ def carregar(mem, pasta_execucao=None):
 
 
 def gravar(mem, titulo, registro, pasta_execucao=None):
-    """Apende um bloco datado. Nunca reescreve o passado."""
+    """Apende um bloco datado. Nunca reescreve o passado.
+    Tipo COMUM também sobe pro banco compartilhado (os três enxergam) —
+    best-effort: sem rede, fica o arquivo local e a vida segue."""
     p = _caminho(mem, pasta_execucao)
     os.makedirs(os.path.dirname(p), exist_ok=True)
     bloco = (f"\n## {time.strftime('%d/%m/%Y %H:%M')} · {titulo}\n"
              f"{(registro or '').strip()[:2500]}\n")
     with open(p, "a", encoding="utf-8") as f:
         f.write(bloco)
+    if (mem or {}).get("tipo") == "comum":
+        try:
+            import banco
+            banco.memoria_gravar(titulo, (registro or "")[:2500])
+        except Exception:
+            pass
     return p
 
 

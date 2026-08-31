@@ -134,7 +134,13 @@ class Mao(BaseHTTPRequestHandler):
         if p == "/api/quadro":
             return self._responder(cartoes_do_quadro(forcar="forcar" in q))
         if p == "/api/fluxos":
-            return self._responder({"fluxos": listar_fluxos(),
+            comp = []
+            try:
+                import banco
+                comp = banco.fluxos_listar()
+            except Exception:
+                pass
+            return self._responder({"fluxos": listar_fluxos(), "compartilhados": comp,
                                     "panico": guarda.panico_ligado()})
         if p.startswith("/api/fluxo/"):
             try:
@@ -222,6 +228,33 @@ class Mao(BaseHTTPRequestHandler):
                 json.dump(fluxo, f, ensure_ascii=False, indent=1)
             return self._responder({"ensaio": guarda.em_ensaio(fluxo),
                                     "liberado": fluxo.get("liberado")})
+
+        if p.startswith("/api/compartilhar/"):
+            nome = p[18:].replace(".json", "")
+            try:
+                import banco
+                fluxo = json.load(open(caminho_fluxo(nome), encoding="utf-8"))
+                fluxo.pop("liberado", None)   # a liberação NUNCA viaja
+                r = banco.fluxo_gravar(nome, fluxo)
+                return self._responder({"ok": True, **r})
+            except FileNotFoundError:
+                return self._responder({"erro": "esse fluxo não existe aqui"}, 404)
+            except Exception as e:
+                return self._responder({"erro": str(e)}, 502)
+
+        if p.startswith("/api/puxar/"):
+            nome = p[11:].replace(".json", "")
+            try:
+                import banco
+                corpo = banco.fluxo_abrir(nome)
+                if not corpo:
+                    return self._responder({"erro": "não existe no banco"}, 404)
+                corpo.pop("liberado", None)   # chega preso: quem solta é você
+                with open(caminho_fluxo(nome), "w", encoding="utf-8") as f:
+                    json.dump(corpo, f, ensure_ascii=False, indent=1)
+                return self._responder({"ok": True, "nome": nome})
+            except Exception as e:
+                return self._responder({"erro": str(e)}, 502)
 
         if p == "/api/panico":
             if corpo.get("puxar"):

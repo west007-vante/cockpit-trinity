@@ -155,6 +155,61 @@ def uma_volta(agora=None, quadro=None, eventos_novos=None, disparos=None):
     return disparos
 
 
+def processar_recados():
+    """Recados de sócio chegando NESTA máquina. A regra que não dobra:
+    sem confiança (confianca.py) o nó roda em ENSAIO e devolve o ensaio —
+    o remetente vê o encanamento vivo, o dono daqui mantém o controle.
+    Com confiança, roda valendo — e o guarda local confere MESMO ASSIM."""
+    import banco
+    import confianca
+    import motor
+    try:
+        novos = banco.recados_puxar()
+    except Exception:
+        return []
+    feitos = []
+    for rec in novos:
+        rid, de = rec.get("id"), rec.get("de", "?")
+        carga = rec.get("payload") or {}
+        if rec.get("tipo") != "no" or not isinstance(carga.get("no"), dict):
+            # recado de conversa (tipo "mensagem" do MCP) não executa nada —
+            # fica marcado como feito com um aceno, pro remetente saber que chegou
+            try:
+                banco.recado_responder(rid, "feito",
+                    {"ok": True, "saida": "recado recebido (sem execução — não é um nó)"})
+            except Exception:
+                pass
+            continue
+        no = dict(carga["no"])
+        fluxo_nome = carga.get("fluxo_nome") or "sem-nome"
+        confia = confianca.confiavel(de, fluxo_nome)
+        fluxo1 = {"nome": f"recado-{rid}·{de}·{fluxo_nome}", "nos": [no], "fios": []}
+        if confia:
+            guarda.liberar(fluxo1, f"confianca.json ({de} → {fluxo_nome})")
+        pode, modo, recados_g = guarda.liberado_pra_rodar(
+            fluxo1, forcar_ensaio=not confia)
+        if not pode:
+            resposta = {"ok": False, "saida": " · ".join(recados_g)[:2000]}
+            status = "recusado"
+        else:
+            # a saída do passo anterior do fluxo REMOTO entra como contexto
+            no.setdefault("usar_saida_anterior", False)
+            out = motor.rodar(fluxo1, modo)
+            r = (out.get("resultado") or {}).get(no.get("id") or "", {}) or                 next(iter((out.get("resultado") or {}).values()), {})
+            aviso = "" if confia else (
+                " ⚠️ rodei em ENSAIO: o dono desta máquina ainda não liberou "
+                f"este fluxo remoto (python3 confianca.py liberar {de} {fluxo_nome})")
+            resposta = {"ok": r.get("ok", False), "saida": (r.get("saida") or "")[:6000] + aviso,
+                        "modo": modo}
+            status = "feito" if r.get("ok") else "erro"
+        try:
+            banco.recado_responder(rid, status, resposta)
+            feitos.append({"id": rid, "de": de, "status": status, "modo": resposta.get("modo")})
+        except Exception:
+            pass
+    return feitos
+
+
 def laco(intervalo_s=30, pare=None):
     """O laço de verdade — roda dentro do servidor. `pare` é um threading.Event."""
     import modelos
@@ -162,6 +217,7 @@ def laco(intervalo_s=30, pare=None):
         try:
             eventos = puxar_eventos_webhook()
             uma_volta(eventos_novos=eventos)
+            processar_recados()
             modelos.derrubar_se_ocioso(10)      # 12 GB parados não são aluguel grátis
         except Exception:
             pass

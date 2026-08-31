@@ -146,7 +146,7 @@ def _limpar_harmony(texto):
     return texto.strip()
 
 
-def chamar(modelo, pedido, pasta="~", timeout_s=300, saida_imagem=None):
+def chamar(modelo, pedido, pasta="~", timeout_s=300, saida_imagem=None, args_extras=None):
     """A porta única. Devolve {"ok", "saida", "modelo", "duracao_s", ...}."""
     reg = registro()
     cfg = reg.get(modelo)
@@ -159,8 +159,8 @@ def chamar(modelo, pedido, pasta="~", timeout_s=300, saida_imagem=None):
     # ── nuvem: o caminho de sempre
     if cfg["tipo"] == "nuvem":
         try:
-            r = subprocess.run(["claude", "-p", pedido], cwd=pasta,
-                               capture_output=True, text=True, timeout=timeout_s)
+            r = subprocess.run(["claude", "-p", pedido] + list(args_extras or []),
+                               cwd=pasta, capture_output=True, text=True, timeout=timeout_s)
             return {"ok": r.returncode == 0, "modelo": modelo,
                     "saida": ((r.stdout or "") + (r.stderr or ""))[:8000],
                     "duracao_s": round(time.time() - t0, 1)}

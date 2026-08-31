@@ -214,6 +214,25 @@ def conferir_no(no):
         if corpo is not None and not isinstance(corpo, (dict, list)):
             out.append(f'"{nome}": o corpo do webhook precisa ser JSON (objeto ou lista).')
 
+    if tipo == "terminal":
+        acao = no.get("acao") or "list"
+        if acao not in ("list", "recruit", "ask", "connect", "notify", "dismiss"):
+            out.append(f'"{nome}": ação de terminal desconhecida: {acao}')
+        if acao in ("recruit", "ask", "connect", "dismiss") and not (no.get("nome") or "").strip():
+            out.append(f'"{nome}": a ação {acao} precisa do NOME do terminal.')
+        if acao in ("ask", "notify") and not (no.get("texto") or "").strip():
+            out.append(f'"{nome}": a ação {acao} precisa do TEXTO.')
+        for achado, oque in vermelho(no.get("texto") or ""):
+            out.append(f'🔴 "{nome}": o pedido ao terminal manda {oque} — "{achado}". Passa por você.')
+
+    if tipo == "app":
+        if not (no.get("app") or "").strip():
+            out.append(f'"{nome}": nó de app sem o aplicativo alvo.')
+        if not (no.get("pedido") or "").strip():
+            out.append(f'"{nome}": nó de app sem a tarefa.')
+        for achado, oque in vermelho(no.get("pedido") or ""):
+            out.append(f'🔴 "{nome}": a tarefa no app manda {oque} — "{achado}". Passa por você.')
+
     if tipo == "agente":
         if not (no.get("pedido") or "").strip():
             out.append(f'"{nome}": nó de agente sem pedido escrito.')

@@ -53,6 +53,16 @@ class Diario:
         return reg
 
 
+def _dono_local():
+    try:
+        for ln in open(os.path.expanduser("~/.steve/esteira.env"), encoding="utf-8"):
+            if ln.startswith("ESTEIRA_DONO="):
+                return ln.split("=", 1)[1].strip().lower()
+    except Exception:
+        pass
+    return "steve"
+
+
 def carregar(caminho):
     with open(caminho, encoding="utf-8") as f:
         return json.load(f)
@@ -83,6 +93,41 @@ def faz_comando(no, modo, diario):
         return {"ok": False, "saida": f"estourou o tempo ({limite}s) e foi morto."}
     except Exception as e:
         return {"ok": False, "saida": f"não consegui rodar: {e}"}
+
+
+def faz_remoto(no, modo, fluxo_nome, saida_anterior):
+    """O nó com executor de OUTRO sócio: vira recado na fila compartilhada.
+    O daemon da máquina dele puxa, roda com os freios DELE, devolve o resultado.
+    Aqui a gente só espera — com paciência declarada e fim honesto."""
+    import banco
+    para = no.get("executor")
+    espera_max = min(no.get("timeout_s") or 600, 1800)
+    if modo == "ensaio":
+        return {"ok": True, "ensaio": True,
+                "saida": f"[ensaio] deixaria o nó '{no.get('titulo')}' na fila pra "
+                         f"{para.upper()} executar na máquina dele (espera de até {espera_max}s)"}
+    carga = {"no": {k: v for k, v in no.items() if k not in ("x", "y", "executor")},
+             "fluxo_nome": fluxo_nome, "saida_anterior": (saida_anterior or "")[:4000]}
+    try:
+        rid = banco.recado_deixar(para, "no", carga)
+    except Exception as e:
+        return {"ok": False, "saida": f"não consegui deixar o recado: {e}"}
+    t0 = time.time()
+    while time.time() - t0 < espera_max:
+        if guarda.panico_ligado():
+            return {"ok": False, "saida": f"freio puxado enquanto esperava o recado #{rid}"}
+        time.sleep(6)
+        try:
+            v = banco.recado_ver(rid) or {}
+        except Exception:
+            continue
+        if v.get("status") in ("feito", "erro", "recusado"):
+            r = v.get("resultado") or {}
+            return {"ok": v["status"] == "feito" and r.get("ok", True),
+                    "saida": f"[{para} · {v['status']}] " + str(r.get("saida", ""))[:6000],
+                    "remoto": True, "recado": rid}
+    return {"ok": False, "saida": f"o recado #{rid} pra {para} não voltou em {espera_max}s "
+            "(a máquina dele está ligada? o daemon roda?)"}
 
 
 def faz_agente(no, modo, diario, saida_anterior, pasta_execucao=None):
@@ -209,6 +254,90 @@ def faz_webhook(no, modo, saida_anterior=""):
         return {"ok": False, "saida": f"o destino não aceitou: {e}"}
 
 
+FILA_MAESTRI = os.path.join(CASA, ".maestri-fila")
+
+
+def _ponte_viva():
+    try:
+        return time.time() - int(open(os.path.join(FILA_MAESTRI, ".ponte-viva")).read().strip()) < 15
+    except Exception:
+        return False
+
+
+def faz_terminal(no, modo):
+    """Nó 🖥️ Terminal — comanda o canvas do Maestri PELA PONTE (um terminal
+    dentro do app rodando maestri-ponte.sh). recruit cria terminal, ask manda
+    pedido e espera a resposta do agente, connect liga, notify avisa o dono."""
+    import shlex
+    acao = no.get("acao") or "list"
+    linha = {"list": "list",
+             "recruit": lambda: "recruit " + shlex.quote(no.get("nome", "Novo")) +
+                        ((" --dir " + shlex.quote(os.path.expanduser(no["dir"]))) if no.get("dir") else "") +
+                        ((" --command " + shlex.quote(no["comando"])) if no.get("comando") else ""),
+             "ask": lambda: "ask " + shlex.quote(no.get("nome", "")) + " " + shlex.quote(no.get("texto", "")),
+             "connect": lambda: "connect " + shlex.quote(no.get("nome", "")) + " " + shlex.quote(no.get("para", "")),
+             "notify": lambda: "notify " + shlex.quote(no.get("texto", "")),
+             "dismiss": lambda: "dismiss " + shlex.quote(no.get("nome", "")),
+             }.get(acao)
+    if linha is None:
+        return {"ok": False, "saida": f"ação desconhecida no terminal: {acao}"}
+    linha = linha if isinstance(linha, str) else linha()
+    if modo == "ensaio":
+        return {"ok": True, "ensaio": True, "saida": f"[ensaio] pediria à ponte: maestri {linha}"}
+    if not _ponte_viva():
+        return {"ok": False, "saida":
+                "a ponte do Maestri não está de pé. Abra o Maestri, crie um terminal "
+                "e rode nele:  bash ~/esteira/maestri-ponte.sh  (deixe aberto)"}
+    os.makedirs(FILA_MAESTRI, exist_ok=True)
+    rid = f"{int(time.time()*1000)}"
+    with open(os.path.join(FILA_MAESTRI, rid + ".cmd"), "w", encoding="utf-8") as f:
+        f.write(linha)
+    limite = min(no.get("timeout_s") or 180, 900)
+    t0 = time.time()
+    done = os.path.join(FILA_MAESTRI, rid + ".done")
+    while time.time() - t0 < limite:
+        if os.path.exists(done):
+            saida = open(done, encoding="utf-8").read()[:8000]
+            try:
+                rc = int(open(os.path.join(FILA_MAESTRI, rid + ".rc")).read().strip())
+            except Exception:
+                rc = 0
+            for ext in (".done", ".rc"):
+                try:
+                    os.remove(os.path.join(FILA_MAESTRI, rid + ext))
+                except Exception:
+                    pass
+            return {"ok": rc == 0, "saida": saida or "(sem saída)"}
+        time.sleep(1)
+    return {"ok": False, "saida": f"a ponte não respondeu em {limite}s (o terminal dela ainda está aberto?)"}
+
+
+def faz_app(no, modo, saida_anterior=""):
+    """Nó 🖐 App — o agente com olhos e mãos no aplicativo REAL, via ~/maos.
+    Por baixo é um agente claude com a instrução de seguir o PROTOCOLO."""
+    app = no.get("app") or ""
+    pedido = no.get("pedido") or ""
+    prompt = (
+        "Você vai operar um aplicativo nativo do macOS usando o protocolo MÃOS.\n"
+        "1. Leia ~/maos/PROTOCOLO.md e rode `~/maos/maos doutor --json` PRIMEIRO.\n"
+        "2. Se houver permissão faltando, PARE e reporte — não contorne.\n"
+        f"3. O aplicativo alvo: {app}\n"
+        f"4. A tarefa: {pedido}\n"
+        "5. Ao final, reporte o que fez e o que viu, em 5 linhas.\n"
+        + (f"\nContexto do passo anterior:\n{saida_anterior[:2000]}" if saida_anterior else ""))
+    if modo == "ensaio":
+        return {"ok": True, "ensaio": True,
+                "saida": f"[ensaio] chamaria o agente-com-mãos no app {app!r}: {pedido[:200]}"}
+    import modelos
+    # Permissão CIRÚRGICA: o processo deste nó pré-aprova APENAS o binário das
+    # mãos. Nenhum outro comando ganha carona — e a lista vermelha da esteira
+    # já barrou pedido perigoso antes de chegar aqui.
+    maos_bin = os.path.expanduser("~/maos/maos")
+    return modelos.chamar("claude", prompt, pasta="~/maos",
+                          timeout_s=min(no.get("timeout_s") or 600, guarda.TIMEOUT_MAX_S),
+                          args_extras=["--allowedTools", f"Bash({maos_bin}:*)"])
+
+
 def faz_espera(no, modo):
     mins = no.get("minutos", 1)
     if modo == "ensaio":
@@ -277,12 +406,21 @@ def rodar(fluxo, modo="ensaio", diario=None, ao_vivo=None):
         if tipo == "comando":
             r = faz_comando(no, modo, diario)
         elif tipo == "agente":
-            r = faz_agente(no, modo, diario, ctx_saida,
-                           pasta_execucao=os.path.join(DIARIO_DIR, diario.id + ".mem"))
+            executor = (no.get("executor") or "").strip().lower()
+            meu = _dono_local()
+            if executor and executor not in ("", "local", meu):
+                r = faz_remoto(no, modo, fluxo.get("nome", ""), ctx_saida)
+            else:
+                r = faz_agente(no, modo, diario, ctx_saida,
+                               pasta_execucao=os.path.join(DIARIO_DIR, diario.id + ".mem"))
         elif tipo == "tarefa":
             r = faz_tarefa(no, modo, diario, fluxo.get("nome", ""))
         elif tipo == "condicao":
             r = faz_condicao(no, ctx_ok, ctx_saida, modo)
+        elif tipo == "terminal":
+            r = faz_terminal(no, modo)
+        elif tipo == "app":
+            r = faz_app(no, modo, ctx_saida)
         elif tipo == "webhook":
             r = faz_webhook(no, modo, ctx_saida)
         elif tipo == "espera":

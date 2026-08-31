@@ -216,6 +216,8 @@ select.sel{background:var(--panel-2);border:1px solid var(--rule);border-radius:
   <button class="btn valendo" id="btValendo" title="só funciona em fluxo que você soltou">▶ valendo</button>
   <span id="seloModo" class="selo ensaio">ensaio</span>
   <div style="flex:1"></div>
+  <button class="btn" id="btCompart" title="sobe este fluxo pro banco — os três enxergam">⇡ compartilhar</button>
+  <button class="btn" id="btPuxar" title="baixa um fluxo compartilhado (chega em ensaio)">⇣ do banco</button>
   <button class="btn" id="btAjuste" title="soltar ou prender este fluxo">🔒 soltar…</button>
   <button class="btn" id="btDiario">diário</button>
   <button class="btn perigo" id="btPanico" title="para tudo agora">⏹ parar tudo</button>
@@ -230,6 +232,8 @@ select.sel{background:var(--panel-2);border:1px solid var(--rule);border-radius:
   <div class="tipo" draggable="true" data-tipo="espera"  style="--cor:var(--n-espera)"><i>⏱️</i><b>Espera</b></div>
   <div class="tipo" draggable="true" data-tipo="dividir" style="--cor:var(--n-dividir)"><i>🔀</i><b>Dividir</b></div>
   <div class="tipo" draggable="true" data-tipo="webhook" style="--cor:var(--n-agente)"><i>🌐</i><b>Webhook</b></div>
+  <div class="tipo" draggable="true" data-tipo="terminal" style="--cor:var(--n-comando)"><i>🖥️</i><b>Terminal</b></div>
+  <div class="tipo" draggable="true" data-tipo="app" style="--cor:var(--n-condicao)"><i>🖐</i><b>App</b></div>
 
   <h3>Cartões do quadro</h3>
   <input id="buscaCard" placeholder="buscar…" autocomplete="off">
@@ -262,6 +266,8 @@ var ligando = null;      // {de, porta} enquanto o fio está sendo puxado
 
 var TIPOS = {
   webhook: {icone:"🌐", cor:"var(--n-agente)",  rot:"webhook"},
+  terminal:{icone:"🖥️", cor:"var(--n-comando)", rot:"terminal"},
+  app:     {icone:"🖐", cor:"var(--n-condicao)",rot:"app"},
   tarefa:  {icone:"📋", cor:"var(--n-tarefa)",  rot:"tarefa"},
   agente:  {icone:"🤖", cor:"var(--n-agente)",  rot:"agente"},
   comando: {icone:"⚡", cor:"var(--n-comando)", rot:"comando"},
@@ -292,12 +298,14 @@ function render(){
     d.style.cssText = "left:"+(n.x||60)+"px;top:"+(n.y||60)+"px;--cor:"+t.cor;
     d.dataset.id = n.id;
     var sub = n.tipo==="comando" ? (n.comando||"") :
-              n.tipo==="agente"  ? ({["claude"]:"☁️ claude",["local-texto"]:"🏠 gpt-oss-20b",["local-imagem"]:"🎨 FLUX.2"}[n.modelo||"claude"]+
+              n.tipo==="agente"  ? ((n.executor?"📨 → "+n.executor+" · ":"")+{["claude"]:"☁️ claude",["local-texto"]:"🏠 gpt-oss-20b",["local-imagem"]:"🎨 FLUX.2"}[n.modelo||"claude"]+
                                      ((n.contexto||[]).length?" · "+(n.contexto||[]).length+" fonte(s)":"")+
                                      ((n.memoria||{}).tipo?" · 🧠 "+n.memoria.tipo:"")) :
               n.tipo==="tarefa"  ? (n.mover_para||"") :
               n.tipo==="espera"  ? ((n.minutos||1)+" min") :
               n.tipo==="webhook" ? (n.url||"(sem URL)") :
+              n.tipo==="terminal"? ((n.acao||"list")+(n.nome?" · "+n.nome:"")) :
+              n.tipo==="app"     ? (n.app||"(sem app)") :
               n.tipo==="condicao"? ({deu_certo:"se deu certo",falhou:"se falhou",contem:'se contém "'+(n.texto||"")+'"'}[n.regra||"deu_certo"]) : "";
     d.innerHTML =
       '<div class="cab"><span class="icone">'+t.icone+'</span><span class="tp">'+t.rot+'</span></div>'+
@@ -520,7 +528,12 @@ function abrirGaveta(id){
       return "";
     }).join("\n");
     var memT = (n.memoria||{}).tipo||"";
-    h += '<label>Quem pensa (o modelo)</label><select id="gvModelo">'+
+    h += '<label>Quem executa</label><select id="gvExecutor">'+
+         [["","nesta máquina (eu)"],["steve","Steve — máquina do Pyerri"],
+          ["rico","Rico — máquina do Davi"],["joao","agente do João"]].map(function(o){
+            return '<option value="'+o[0]+'"'+((n.executor||"")===o[0]?" selected":"")+'>'+o[1]+'</option>';}).join("")+
+         '</select>'+
+         '<label>Quem pensa (o modelo)</label><select id="gvModelo">'+
          [["claude","Claude — nuvem, sua conta"],
           ["local-texto","gpt-oss-20b — local, grátis"],
           ["local-imagem","FLUX.2 — local, gera imagem"]].map(function(o){
@@ -555,6 +568,18 @@ function abrirGaveta(id){
          '<label>Texto</label><input id="gvTexto" value="'+esc(n.texto||"")+'"></div>';
   } else if(n.tipo==="espera"){
     h += '<label>Minutos</label><input id="gvMinutos" type="number" min="1" max="1440" value="'+(n.minutos||5)+'">';
+  } else if(n.tipo==="terminal"){
+    h += '<label>Ação no Maestri</label><select id="gvAcao">'+
+         [["list","listar o canvas"],["recruit","criar terminal"],["ask","pedir a um agente"],
+          ["connect","ligar dois"],["notify","avisar o dono"],["dismiss","fechar terminal"]].map(function(o){
+           return '<option value="'+o[0]+'"'+((n.acao||"list")===o[0]?" selected":"")+'>'+o[1]+'</option>';}).join("")+
+         '</select>'+
+         '<label>Nome do terminal/agente</label><input id="gvNomeT" value="'+esc(n.nome||"")+'" placeholder="ex: Executor 1">'+
+         '<label>Texto (pra ask/notify)</label><textarea id="gvTextoT">'+esc(n.texto||"")+'</textarea>'+
+         '<label>Pasta (pra recruit)</label><input id="gvDirT" value="'+esc(n.dir||"")+'" placeholder="~/projeto">';
+  } else if(n.tipo==="app"){
+    h += '<label>Aplicativo</label><input id="gvApp" value="'+esc(n.app||"")+'" placeholder="ex: Finder, UpSeller">'+
+         '<label>A tarefa (o agente usa olhos e mãos via ~/maos)</label><textarea id="gvPedidoApp">'+esc(n.pedido||"")+'</textarea>';
   } else if(n.tipo==="webhook"){
     h += '<label>URL de destino (só https)</label><input id="gvUrl" value="'+esc(n.url||"")+'" placeholder="https://…">'+
          '<label>Corpo (JSON)</label><textarea id="gvCorpo">'+esc(JSON.stringify(n.corpo||{}, null, 1))+'</textarea>'+
@@ -592,6 +617,7 @@ function abrirGaveta(id){
     if(v("#gvCard")!==undefined)    n.card_id = v("#gvCard");
     if(v("#gvMover")!==undefined)   n.mover_para = v("#gvMover");
     if(v("#gvComentar")!==undefined)n.comentar = v("#gvComentar");
+    if(v("#gvExecutor")!==undefined) n.executor = v("#gvExecutor")||undefined;
     if(v("#gvModelo")!==undefined)  n.modelo = v("#gvModelo");
     if(v("#gvContexto")!==undefined){
       n.contexto = v("#gvContexto").split("\n").map(function(l){
@@ -610,6 +636,12 @@ function abrirGaveta(id){
     if(v("#gvRegra")!==undefined)   n.regra = v("#gvRegra");
     if(v("#gvTexto")!==undefined)   n.texto = v("#gvTexto");
     if(v("#gvMinutos")!==undefined) n.minutos = parseInt(v("#gvMinutos"),10)||5;
+    if(v("#gvAcao")!==undefined)    n.acao = v("#gvAcao");
+    if(v("#gvNomeT")!==undefined)   n.nome = v("#gvNomeT").trim();
+    if(v("#gvTextoT")!==undefined)  n.texto = v("#gvTextoT");
+    if(v("#gvDirT")!==undefined)    n.dir = v("#gvDirT").trim()||undefined;
+    if(v("#gvApp")!==undefined)     n.app = v("#gvApp").trim();
+    if(v("#gvPedidoApp")!==undefined) n.pedido = v("#gvPedidoApp");
     if(v("#gvUrl")!==undefined)     n.url = v("#gvUrl").trim();
     if(v("#gvCorpo")!==undefined){
       try{ n.corpo = JSON.parse(v("#gvCorpo")||"{}"); }
@@ -789,6 +821,26 @@ $("#btPanico").onclick = function(){
     marcarPanico(d.panico);
     abrirDiario([d.panico ? "er|🛑 FREIO PUXADO — nenhum fluxo roda até você soltar"
                           : "ok|freio solto"]);
+  });
+};
+$("#btCompart").onclick = function(){
+  salvar().then(function(){ return pedir("/api/compartilhar/"+arquivoAtual, {}); }).then(function(d){
+    abrirDiario([d.ok ? "ok|⇡ compartilhado no banco — Davi e João enxergam (chega PRESO no ensaio lá)"
+                      : "er|não deu: "+(d.erro||"?")]);
+  });
+};
+$("#btPuxar").onclick = function(){
+  pedir("/api/fluxos").then(function(d){
+    var comp = d.compartilhados||[];
+    if(!comp.length) return abrirDiario(["av|não há fluxo compartilhado no banco ainda"]);
+    var nome = prompt("Qual fluxo puxar?\n\n" + comp.map(function(f){
+      return "· "+f.nome+" (dono "+f.dono+", editado por "+f.editado_por+")";}).join("\n"), comp[0].nome);
+    if(!nome) return;
+    pedir("/api/puxar/"+nome.trim(), {}).then(function(r){
+      if(r.erro) return abrirDiario(["er|"+r.erro]);
+      carregarFluxos(nome.trim()+".json").then(function(){ abrirFluxo(nome.trim()+".json"); });
+      abrirDiario(["ok|⇣ baixado — está EM ENSAIO até você soltar"]);
+    });
   });
 };
 $("#selFluxo").addEventListener("change", function(){ abrirFluxo(this.value); });
