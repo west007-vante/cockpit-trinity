@@ -1,0 +1,73 @@
+{
+ "nome": "prova",
+ "descricao": "Fluxo de prova: 5 nós, uma condição com duas portas.",
+ "gatilho": {
+  "tipo": "manual"
+ },
+ "nos": [
+  {
+   "id": "n1",
+   "tipo": "comando",
+   "titulo": "Contar cartões do quadro",
+   "pasta": "~/trinity/trello",
+   "comando": "python3 -c \"print('57 cartoes')\"",
+   "x": 60,
+   "y": 200
+  },
+  {
+   "id": "n2",
+   "tipo": "condicao",
+   "titulo": "Deu certo?",
+   "regra": "deu_certo",
+   "x": 380,
+   "y": 200
+  },
+  {
+   "id": "n3",
+   "tipo": "agente",
+   "titulo": "Agente: resumir o dia",
+   "pasta": "~/esteira",
+   "pedido": "Leia o resultado acima e escreva um resumo de 2 linhas.",
+   "x": 700,
+   "y": 100
+  },
+  {
+   "id": "n4",
+   "tipo": "tarefa",
+   "titulo": "Mover o cartão pra Fazendo",
+   "card_id": "FAKE123",
+   "mover_para": "🔨 Fazendo",
+   "x": 1020,
+   "y": 100
+  },
+  {
+   "id": "n5",
+   "tipo": "comando",
+   "titulo": "Avisar que falhou",
+   "pasta": "~/esteira",
+   "comando": "echo 'algo deu errado'",
+   "x": 700,
+   "y": 320
+  }
+ ],
+ "fios": [
+  {
+   "de": "n1",
+   "para": "n2"
+  },
+  {
+   "de": "n2",
+   "para": "n3",
+   "porta": "sim"
+  },
+  {
+   "de": "n2",
+   "para": "n5",
+   "porta": "nao"
+  },
+  {
+   "de": "n3",
+   "para": "n4"
+  }
+ ]
+}

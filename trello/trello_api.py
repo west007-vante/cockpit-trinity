@@ -48,11 +48,17 @@ def carregar_env(arquivo=ENV_FILE):
 
 
 class Trello:
-    def __init__(self, key=None, token=None, board_id=None, env=None):
+    def __init__(self, key=None, token=None, board_id=None, env=None, assinatura=None):
         cfg = env if env is not None else carregar_env()
         self.key = key or cfg.get("TRELLO_KEY")
         self.token = token or cfg.get("TRELLO_TOKEN")
         self.board_id = board_id or cfg.get("TRELLO_BOARD_ID")
+        # QUEM está escrevendo. O token é da CONTA (Steve), e várias ferramentas
+        # e sessões usam a mesma conta — sem isso, o histórico do Trello mostra
+        # "Steve fez" para tudo e ninguém sabe QUAL robô/sessão fez o quê.
+        # Cada ferramenta declara seu nome (env TRELLO_ASSINATURA ou parâmetro);
+        # o que chegar sem carimbo é sessão interativa via MCP oficial.
+        self.assinatura = assinatura or os.environ.get("TRELLO_ASSINATURA") or cfg.get("TRELLO_ASSINATURA")
         if not self.key or not self.token:
             raise TrelloErro(
                 "Falta chave ou token do Trello. Rode:  python3 ~/trinity/trello/destravar.py\n"
@@ -106,16 +112,34 @@ class Trello:
                 return self._chamar(metodo, caminho, params, corpo, tentativa + 1)
             raise TrelloErro(f"{metodo} {caminho} → sem rede: {e.reason}")
 
+    _DIARIO_ESCRITAS = os.path.expanduser("~/.steve/trello-escritas.jsonl")
+
+    def _anotar_escrita(self, metodo, caminho, resumo=""):
+        """Toda escrita fica anotada localmente: quem (assinatura), o quê, quando.
+        É o que devolve a pergunta "qual sessão fez isso?" — o Trello não devolve."""
+        try:
+            with open(self._DIARIO_ESCRITAS, "a", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "quando": time.strftime("%d/%m/%Y %H:%M:%S"),
+                    "quem": self.assinatura or "(sem carimbo)",
+                    "acao": f"{metodo} {caminho}", "resumo": resumo[:160],
+                }, ensure_ascii=False) + "\n")
+        except Exception:
+            pass
+
     def get(self, caminho, **params):
         return self._chamar("GET", caminho, params)
 
     def post(self, caminho, **params):
+        self._anotar_escrita("POST", caminho, str(params.get("name") or params.get("text") or ""))
         return self._chamar("POST", caminho, params)
 
     def put(self, caminho, **params):
+        self._anotar_escrita("PUT", caminho, str(params.get("name") or params.get("text") or ""))
         return self._chamar("PUT", caminho, params)
 
     def delete(self, caminho, **params):
+        self._anotar_escrita("DELETE", caminho, str(params.get("name") or params.get("text") or ""))
         return self._chamar("DELETE", caminho, params)
 
     # ------------------------------------------------------------------- quem sou
@@ -194,6 +218,8 @@ class Trello:
             p["start"] = start
         if due:
             p["due"] = due
+        if self.assinatura and "🖊" not in (desc or ""):
+            p["desc"] = (desc or "").rstrip() + f"\n\n🖊 _{self.assinatura} · {time.strftime('%d/%m %H:%M')}_"
         return self.post("/cards", **p)
 
     def atualizar_card(self, card_id, **campos):
@@ -206,6 +232,8 @@ class Trello:
         return self.put(f"/cards/{card_id}", closed="true")
 
     def comentar(self, card_id, texto):
+        if self.assinatura and not texto.startswith("🖊"):
+            texto = f"🖊 {self.assinatura} · {texto}"
         return self.post(f"/cards/{card_id}/actions/comments", text=texto)
 
     # ------------------------------------------------------------------ checklist

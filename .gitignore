@@ -11,3 +11,10 @@ trello/rotas.json
 __pycache__/
 *.pyc
 .DS_Store
+
+# ESTEIRA: o que é da máquina fica na máquina
+esteira/execucoes/
+esteira/memoria/
+esteira/*.log
+esteira/.parar-tudo
+esteira/.servidor.pid
