@@ -1,0 +1,13 @@
+# A tabela de rotas REAL fica fora do git: ela mapeia as pastas e os clientes
+# de quem está usando. O repo é público — vai só o rotas.exemplo.json.
+trello/rotas.json
+
+# Nada de credencial no repo (elas moram em ~/.steve/, chmod 600)
+*.env
+!*.exemplo.env
+.steve/
+
+# lixo de máquina
+__pycache__/
+*.pyc
+.DS_Store

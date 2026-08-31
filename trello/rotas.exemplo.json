@@ -1,0 +1,160 @@
+{
+  "_leia": "A tabela que decide em que balde cada trabalho cai. Editável à mão — o roteador relê a cada ciclo. A ordem importa: a PRIMEIRA rota que casar com o caminho vence o desempate por contagem.  ⚠️ Este é o EXEMPLO. Copie para rotas.json e troque pelas SUAS pastas — o rotas.json real fica fora do git de propósito.",
+  "janela_de_trabalho": {
+    "_leia": "Onde o agendador pode encaixar bloco. Formato 24h. Fuso America/Sao_Paulo.",
+    "steve": {
+      "seg": [
+        "09:00",
+        "19:00"
+      ],
+      "ter": [
+        "09:00",
+        "19:00"
+      ],
+      "qua": [
+        "09:00",
+        "19:00"
+      ],
+      "qui": [
+        "09:00",
+        "19:00"
+      ],
+      "sex": [
+        "09:00",
+        "19:00"
+      ],
+      "sab": [
+        "09:00",
+        "13:00"
+      ],
+      "dom": null
+    },
+    "rico": {
+      "seg": [
+        "09:00",
+        "18:00"
+      ],
+      "ter": [
+        "09:00",
+        "18:00"
+      ],
+      "qua": [
+        "09:00",
+        "18:00"
+      ],
+      "qui": [
+        "09:00",
+        "18:00"
+      ],
+      "sex": [
+        "09:00",
+        "18:00"
+      ],
+      "sab": null,
+      "dom": null
+    }
+  },
+  "duracao_por_esforco": {
+    "_leia": "Esforço 1–5 do Quadro da Obra → minutos de bloco na agenda.",
+    "1": 30,
+    "2": 60,
+    "3": 120,
+    "4": 240,
+    "5": 480,
+    "padrao": 60
+  },
+  "rotas": [
+    {
+      "caminho": "/Users/SEU_USUARIO/projeto-a",
+      "tipo": "obra",
+      "area": "A",
+      "rotulo": "Frente A"
+    },
+    {
+      "caminho": "/Users/SEU_USUARIO/projeto-b",
+      "tipo": "obra",
+      "area": "B",
+      "rotulo": "Frente B"
+    },
+    {
+      "caminho": "/Users/SEU_USUARIO/Desktop/CLIENTE-X",
+      "tipo": "cliente",
+      "area": "E",
+      "rotulo": "Cliente X"
+    },
+    {
+      "caminho": "/Users/SEU_USUARIO/trinity",
+      "tipo": "obra",
+      "area": "G",
+      "rotulo": "Infra · o Quadro"
+    },
+    {
+      "caminho": "/Users/SEU_USUARIO/.claude",
+      "tipo": "obra",
+      "area": "G",
+      "rotulo": "Infra · Claude Code"
+    },
+    {
+      "caminho": "/Users/SEU_USUARIO/Desktop/BANCADA",
+      "tipo": "bancada",
+      "area": null,
+      "rotulo": "Bancada"
+    },
+    {
+      "caminho": "/Users/SEU_USUARIO/Downloads",
+      "tipo": "bancada",
+      "area": null,
+      "rotulo": "Bancada · baixados"
+    }
+  ],
+  "palavras_chave": {
+    "_leia": "Só entra em campo quando NENHUM arquivo casou (ex.: turno só de comando). Casa no título, sem acento e em minúscula.",
+    "obra": {
+      "A": [
+        "palavra da frente a"
+      ],
+      "B": [
+        "palavra da frente b"
+      ],
+      "G": [
+        "supabase",
+        "hook",
+        "daemon",
+        "trello",
+        "mcp"
+      ]
+    },
+    "cliente": {
+      "Cliente X": [
+        "cliente x"
+      ]
+    },
+    "bancada": [
+      "curiosidade",
+      "estudo",
+      "experimento",
+      "teste de",
+      "brincar",
+      "hobby",
+      "aprender",
+      "como funciona",
+      "pesquisa sobre"
+    ]
+  },
+  "ignorar_arquivos": {
+    "_leia": "Caminhos que NUNCA devem decidir a rota — são ruído de máquina, não obra.",
+    "prefixos": [
+      "/private/tmp/claude-",
+      "/Users/SEU_USUARIO/.claude/plans/",
+      "/Users/SEU_USUARIO/.claude/projects/",
+      "/tmp/",
+      "/var/folders/"
+    ]
+  },
+  "bancada_por_pesquisa": {
+    "_leia": "O terceiro balde. Turno SÓ de pesquisa (leu, buscou, não escreveu nada) que passe do tempo mínimo vira card na Bancada. Abaixo disso é conversa e morre — a lei do dono continua valendo.",
+    "ligado": true,
+    "minutos_minimos": 5,
+    "minimo_de_buscas": 2
+  }
+}

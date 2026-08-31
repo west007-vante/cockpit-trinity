@@ -81,7 +81,10 @@ def _e_prompt_humano(text):
         return False
     if "<system-reminder>" in t or "base directory for this skill" in t:
         return False
-    return len(text) <= 600      # prompt digitado não costuma passar disso
+    # Era 600 e comia pedido longo: o Pyerri dita parágrafos inteiros, e o turno
+    # ficava com o título genérico "trabalho no Claude Code". Agora aceita o pedido
+    # comprido e quem corta é o _encurtar — rejeitar por tamanho perdia o título real.
+    return len(text) <= 6000
 
 
 def _encurtar(t, n=120):
@@ -133,6 +136,101 @@ def _summary(files, tools):
     return "mexeu em " + " · ".join(parts) if parts else "trabalho concluído"
 
 
+# ---------------------------------------------------------------------------
+# A FILA DO QUADRO (acrescentado em 30/08/2026)
+#
+# O worklog manda o trabalho pro Supabase (a Ponte com o Davi). O quadro do
+# Trello é alimentado por esta fila local, consumida pelo roteador.
+#
+# Por que uma fila local em vez de ler o Supabase de volta: a chave que o hook
+# tem SÓ ESCREVE (a leitura é negada de propósito — furo fechado em 29/08). Ler
+# de volta exigiria credencial nova e mais poderosa na máquina. A fila resolve
+# sem abrir nada: cada lado alimenta o mesmo quadro do Trello, e o Trello é o
+# ponto de encontro. Funciona offline; o roteador consome quando puder.
+# ---------------------------------------------------------------------------
+FILA = os.path.join(STATE_DIR, "fila.jsonl")
+LEITURA_TOOLS = {"Read", "Grep", "Glob", "WebSearch", "WebFetch", "NotebookRead"}
+
+
+def _enfileirar(reg):
+    """Acrescenta uma linha na fila. Falha aqui NUNCA pode derrubar a sessão."""
+    try:
+        os.makedirs(STATE_DIR, exist_ok=True)
+        with open(FILA, "a", encoding="utf-8") as f:
+            f.write(json.dumps(reg, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
+def _medir_turno(transcript_path):
+    """Mede o ÚLTIMO turno do transcript: duração, ferramentas usadas e título.
+
+    Serve à regra da Bancada: um turno só de pesquisa (leu, buscou, não escreveu)
+    que passe do tempo mínimo vira card de curiosidade. Um 'que horas são' não.
+    """
+    ferramentas, t0, t1, titulo = {}, None, None, ""
+    try:
+        eventos = []
+        for ln in open(transcript_path, encoding="utf-8", errors="ignore"):
+            try:
+                eventos.append(json.loads(ln))
+            except Exception:
+                continue
+        # acha onde começou o último turno humano
+        inicio = 0
+        for i, ev in enumerate(eventos):
+            if ev.get("type") != "user":
+                continue
+            c = (ev.get("message") or {}).get("content")
+            txt = c if isinstance(c, str) else " ".join(
+                b.get("text", "") for b in c if isinstance(b, dict) and b.get("type") == "text"
+            ) if isinstance(c, list) and not any(
+                isinstance(b, dict) and b.get("type") == "tool_result" for b in c) else ""
+            if _e_prompt_humano(txt):
+                inicio, titulo = i, txt
+        for ev in eventos[inicio:]:
+            ts = ev.get("timestamp")
+            if ts:
+                t0 = t0 or ts
+                t1 = ts
+            msg = ev.get("message") or {}
+            for b in (msg.get("content") or []):
+                if isinstance(b, dict) and b.get("type") == "tool_use":
+                    n = b.get("name", "")
+                    ferramentas[n] = ferramentas.get(n, 0) + 1
+    except Exception:
+        pass
+    dur = 0
+    if t0 and t1:
+        try:
+            from datetime import datetime
+            a = datetime.fromisoformat(str(t0).replace("Z", "+00:00"))
+            b = datetime.fromisoformat(str(t1).replace("Z", "+00:00"))
+            dur = max(0, int((b - a).total_seconds()))
+        except Exception:
+            pass
+    return dur, ferramentas, _encurtar(titulo)
+
+
+def _bancada(inp, owner):
+    """Turno SEM trabalho: decide se foi estudo (vira card) ou conversa (morre).
+
+    Esta é a única mudança de comportamento no filtro do Pyerri. Antes, TODO turno
+    sem escrita era descartado — inclusive uma hora de estudo. A regra nova exige
+    tempo E busca de verdade, então conversa fiada continua morrendo.
+    """
+    dur, fer, titulo = _medir_turno(inp.get("transcript_path", ""))
+    buscas = sum(v for k, v in fer.items() if k in LEITURA_TOOLS)
+    if dur < 300 or buscas < 2 or not titulo:
+        return                                  # conversa. Morre aqui, como sempre.
+    _enfileirar({
+        "db_sid": f"{inp.get('session_id','')}:{int(time.time())}",
+        "owner": owner, "title": titulo, "files": [], "tools": fer,
+        "cwd": inp.get("cwd", ""), "duracao_s": dur, "escreveu": False,
+        "fim": int(time.time()), "origem": "pesquisa",
+    })
+
+
 def handle_post_tool(inp, url, key, owner):
     tool = inp.get("tool_name", "")
     if tool not in WORK_TOOLS:
@@ -153,7 +251,8 @@ def handle_post_tool(inp, url, key, owner):
         # worklog_report; o db_sid identifica a linha (sem precisar do id do banco).
         title = _last_user_prompt(inp.get("transcript_path", "")) or f"trabalho no Claude Code ({os.path.basename(cwd) or host})"
         db_sid = f"{sid}:{int(time.time())}"
-        st = {"db_sid": db_sid, "title": title, "files": [], "tools": {}, "cwd": cwd, "last_patch": 0}
+        st = {"db_sid": db_sid, "title": title, "files": [], "tools": {}, "cwd": cwd,
+              "last_patch": 0, "inicio": time.time()}
         try:
             _rpc(url, key, {"p_owner": owner, "p_db_sid": db_sid, "p_status": "fazendo",
                             "p_title": title, "p_host": host, "p_cwd": cwd,
@@ -180,7 +279,10 @@ def handle_stop(inp, url, key, owner):
     sid = inp.get("session_id", "")
     sp = _state_path(sid)
     if not os.path.exists(sp):
-        return  # turno sem trabalho (Q&A pura) → nada a registrar
+        # Turno sem escrita. Antes morria aqui sempre. Agora ainda morre se foi
+        # conversa — mas se foi estudo de verdade, vira card na Bancada.
+        _bancada(inp, owner)
+        return
     try:
         st = json.load(open(sp))
     except Exception:
@@ -196,6 +298,15 @@ def handle_stop(inp, url, key, owner):
             "p_event": f"✅ {st.get('title','trabalho')[:80]} — {summ}"})
     except Exception:
         pass
+    # A fila do quadro. Independente do Supabase de propósito: se a Ponte estiver
+    # fora do ar, o card ainda nasce. São dois destinos, não um encadeado.
+    _enfileirar({
+        "db_sid": db_sid, "owner": owner, "title": st.get("title"),
+        "files": st.get("files", []), "tools": st.get("tools", {}),
+        "cwd": st.get("cwd", ""), "resumo": summ, "escreveu": True,
+        "duracao_s": max(0, int(time.time() - st.get("inicio", time.time()))),
+        "fim": int(time.time()), "origem": "trabalho",
+    })
     try:
         os.remove(sp)
     except Exception:
@@ -208,8 +319,13 @@ def main():
     except Exception:
         return
     url, key, owner = _load_env()
-    if not (url and key and owner):
+    if not owner:
         return  # não configurado nesta máquina → no-op silencioso
+    # Supabase fora do ar ou não configurado NÃO pode matar a fila do quadro:
+    # os dois destinos são independentes. Sem url/key, o worklog vira no-op e a
+    # fila do Trello continua enchendo — o card nasce igual.
+    url = url or ""
+    key = key or ""
     try:
         ev = inp.get("hook_event_name", "")
         if ev == "PostToolUse":
