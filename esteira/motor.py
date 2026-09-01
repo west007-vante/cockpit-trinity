@@ -165,7 +165,11 @@ def faz_agente(no, modo, diario, saida_anterior, pasta_execucao=None):
                    f"\n  pedido: {pedido[:400]}{'…' if len(pedido) > 400 else ''}")
         return {"ok": True, "ensaio": True, "saida": detalhe}
 
-    r = modelos.chamar(modelo, prompt, pasta=pasta, timeout_s=limite)
+    # O agente headless precisa poder ESCREVER na pasta em que trabalha —
+    # sem isso o fichador da Luciene gravou no limbo. acceptEdits libera
+    # Write/Edit no diretório de trabalho; Bash perigoso continua pedindo dono.
+    extras = ["--permission-mode", "acceptEdits"] if modelo == "claude" else None
+    r = modelos.chamar(modelo, prompt, pasta=pasta, timeout_s=limite, args_extras=extras)
     r.setdefault("saida", "")
 
     # 4. a memória grava DEPOIS — só rodada de verdade que deu certo vira lembrança

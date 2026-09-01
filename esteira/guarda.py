@@ -222,8 +222,10 @@ def conferir_no(no):
             out.append(f'"{nome}": diga o NOME do terminal (é como o fluxo o encontra).')
         if acao in ("digitar", "esperar") and not (no.get("texto") or "").strip():
             out.append(f'"{nome}": a ação {acao} precisa do TEXTO.')
-        if acao == "digitar":
-            # digitar num shell É executar comando — a lista vermelha vale inteira
+        if acao == "digitar" and no.get("enter", True):
+            # digitar COM Enter é executar — a lista vermelha vale inteira.
+            # SEM Enter (enter=false) é rascunho: o texto fica parado no prompt
+            # e o Enter é do DONO, no terminal do canvas — o gate físico literal.
             for achado, oque in vermelho(no.get("texto") or ""):
                 out.append(f'🔴 "{nome}": digitaria {oque} — "{achado}". Passa por você.')
 
